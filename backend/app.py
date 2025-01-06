@@ -3,6 +3,9 @@ import psycopg2
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import requests
+import hashlib
+import hmac
+import time
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your_jwt_secret_key'
@@ -13,6 +16,14 @@ conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cursor = conn.cursor()
 
 TELEGRAM_BOT_TOKEN = "7900896890:AAEENVv_A-kmd9LDyx9124RRdpichJQ012k"
+TELEGRAM_BOT_SECRET = TELEGRAM_BOT_TOKEN.split(':')[1]
+
+def check_telegram_auth(data):
+    check_hash = data.pop('hash')
+    data_check_string = "\n".join([f"{k}={v}" for k, v in sorted(data.items())])
+    secret_key = hashlib.sha256(TELEGRAM_BOT_SECRET.encode()).digest()
+    hmac_string = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    return hmac_string == check_hash
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -44,20 +55,19 @@ def login():
 
 @app.route('/telegram_auth', methods=['POST'])
 def telegram_auth():
-    telegram_id = request.json.get('telegram_id')
-    auth_data = request.json.get('auth_data')
-    
-    # Verify Telegram authentication
-    auth_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe"
-    response = requests.get(auth_url)
-    if response.status_code != 200:
+    auth_data = request.json
+    if not check_telegram_auth(auth_data):
         return jsonify({"msg": "Telegram authentication failed"}), 401
-    
+
+    telegram_id = auth_data['id']
+    username = auth_data['username']
+
     cursor.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
     user = cursor.fetchone()
     if not user:
-        return jsonify({"msg": "User not found"}), 404
-    
+        cursor.execute("INSERT INTO users (telegram_id, username, password) VALUES (%s, %s, %s)", (telegram_id, username, ''))
+        conn.commit()
+
     access_token = create_access_token(identity=telegram_id)
     return jsonify(access_token=access_token), 200
 

@@ -6,7 +6,7 @@ const Register = () => {
   const [password, setPassword] = useState('');
 
   const handleRegister = () => {
-    fetch('http://localhost:5000/register', {
+    fetch('https://your-backend-url.onrender.com/register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
