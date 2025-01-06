@@ -6,16 +6,20 @@ import requests
 import hashlib
 import hmac
 import time
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
-app.config['JWT_SECRET_KEY'] = 'your_jwt_secret_key'
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 jwt = JWTManager(app)
 
-DATABASE_URL = "postgresql://postgres:N7tX1h3p7aZHucQu@dowdily-parental-pochard.data-1.use1.tembo.io:5432/postgres"
+DATABASE_URL = os.getenv('DATABASE_URL')
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cursor = conn.cursor()
 
-TELEGRAM_BOT_TOKEN = "7900896890:AAEENVv_A-kmd9LDyx9124RRdpichJQ012k"
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_BOT_SECRET = TELEGRAM_BOT_TOKEN.split(':')[1]
 
 def check_telegram_auth(data):
