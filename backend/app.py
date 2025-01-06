@@ -81,5 +81,25 @@ def protected():
     current_user = get_jwt_identity()
     return jsonify(logged_in_as=current_user), 200
 
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    data = request.json
+    chat_id = data['message']['chat']['id']
+    text = data['message']['text']
+    
+    # Respond to the message
+    response_text = f"Received your message: {text}"
+    send_message(chat_id, response_text)
+    
+    return jsonify({"status": "ok"}), 200
+
+def send_message(chat_id, text):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        'chat_id': chat_id,
+        'text': text
+    }
+    requests.post(url, json=payload)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
