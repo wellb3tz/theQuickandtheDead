@@ -7,7 +7,7 @@ const Login = () => {
   useEffect(() => {
     window.Telegram.WebApp.ready();
     window.Telegram.WebApp.onEvent('auth', (authData) => {
-      fetch('https://your-backend-url.onrender.com/telegram_auth', {
+      fetch('https://thequickandthedead.onrender.com/telegram_auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -27,7 +27,7 @@ const Login = () => {
   }, []);
 
   const handleLogin = () => {
-    fetch('http://localhost:5000/login', {
+    fetch('https://thequickandthedead.onrender.com/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

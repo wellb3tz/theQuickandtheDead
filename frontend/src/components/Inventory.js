@@ -4,7 +4,7 @@ const Inventory = () => {
   const [items, setItems] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:5000/inventory?user_id=1')
+    fetch('https://thequickandthedead.onrender.com/inventory?user_id=1')
       .then(response => response.json())
       .then(data => setItems(data));
   }, []);
