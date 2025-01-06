@@ -1,4 +1,3 @@
-/src/components/Chat.js
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 
