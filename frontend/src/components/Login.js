@@ -5,6 +5,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
+    console.log('Login component mounted');
     if (window.Telegram && window.Telegram.WebApp) {
       window.Telegram.WebApp.ready();
       window.Telegram.WebApp.onEvent('auth', (authData) => {
@@ -31,6 +32,7 @@ const Login = () => {
   }, []);
 
   const handleLogin = () => {
+    console.log('Login button clicked');
     fetch('https://thequickandthedead.onrender.com/login', {
       method: 'POST',
       headers: {

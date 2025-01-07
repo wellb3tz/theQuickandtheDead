@@ -6,6 +6,7 @@ const Register = () => {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
+    console.log('Register component mounted');
     if (window.Telegram && window.Telegram.WebApp) {
       window.Telegram.WebApp.ready();
       const user = window.Telegram.WebApp.initDataUnsafe.user;
@@ -20,6 +21,7 @@ const Register = () => {
   }, []);
 
   const handleRegister = () => {
+    console.log('Register button clicked');
     fetch('https://thequickandthedead.onrender.com/register', {
       method: 'POST',
       headers: {
