@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import BackButton from './BackButton';
-import Spinner from './Spinner';
+import Spinner from '../Spinner';
 import '../western-theme.css';
 
 const Login = () => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import SlidingMenu from './SlidingMenu';
+import SlidingMenu from '../SlidingMenu';
 import '../western-theme.css';
 
 const PostLogin = () => {
