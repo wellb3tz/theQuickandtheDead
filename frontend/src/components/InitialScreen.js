@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 
 const InitialScreen = () => {
-  const navigate = useNavigate();
+  const history = useHistory();
 
   useEffect(() => {
     console.log('InitialScreen component mounted');
@@ -10,12 +10,12 @@ const InitialScreen = () => {
 
   const handleRegister = () => {
     console.log('Register button clicked');
-    navigate('/register');
+    history.push('/register');
   };
 
   const handleLogin = () => {
     console.log('Login button clicked');
-    navigate('/login');
+    history.push('/login');
   };
 
   return (
