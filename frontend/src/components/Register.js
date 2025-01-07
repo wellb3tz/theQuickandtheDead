@@ -8,6 +8,12 @@ const Register = () => {
   useEffect(() => {
     if (window.Telegram && window.Telegram.WebApp) {
       window.Telegram.WebApp.ready();
+      const user = window.Telegram.WebApp.initDataUnsafe.user;
+      if (user) {
+        setTelegramId(user.id);
+      } else {
+        console.error('Telegram user data is not available');
+      }
     } else {
       console.error('Telegram WebApp is not defined');
     }
@@ -34,12 +40,6 @@ const Register = () => {
   return (
     <div>
       <h2>Register</h2>
-      <input
-        type="text"
-        placeholder="Telegram ID"
-        value={telegramId}
-        onChange={(e) => setTelegramId(e.target.value)}
-      />
       <input
         type="text"
         placeholder="Username"

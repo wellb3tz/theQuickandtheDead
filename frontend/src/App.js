@@ -1,18 +1,20 @@
 import React from 'react';
-import Chat from './components/Chat';
-import Inventory from './components/Inventory';
-import Login from './components/Login';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import InitialScreen from './components/InitialScreen';
 import Register from './components/Register';
+import Login from './components/Login';
 
 function App() {
   return (
-    <div className="App">
-      <h1>Welcome to the Game</h1>
-      <Register />
-      <Login />
-      <Inventory />
-      <Chat />
-    </div>
+    <Router>
+      <div className="App">
+        <Switch>
+          <Route path="/" exact component={InitialScreen} />
+          <Route path="/register" component={Register} />
+          <Route path="/login" component={Login} />
+        </Switch>
+      </div>
+    </Router>
   );
 }
 
