@@ -12,8 +12,10 @@ const PostLogin = () => {
     const storedUsername = localStorage.getItem('username');
     if (storedUsername) {
       setUsername(storedUsername);
+    } else {
+      history.push('/login'); // Redirect to login if not logged in
     }
-  }, []);
+  }, [history]);
 
   const handleLogOff = () => {
     localStorage.removeItem('token');
@@ -23,6 +25,10 @@ const PostLogin = () => {
 
   const handleInventory = () => {
     history.push('/inventory');
+  };
+
+  const handleChat = () => {
+    history.push('/chat');
   };
 
   return (
@@ -35,7 +41,7 @@ const PostLogin = () => {
         </div>
       )}
       <button onClick={() => setMenuOpen(true)} style={{ position: 'fixed', top: '20px', left: '20px', fontSize: '16px' }}>☰</button>
-      <SlidingMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} onLogOff={handleLogOff} onInventory={handleInventory} />
+      <SlidingMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} onLogOff={handleLogOff} onInventory={handleInventory} onChat={handleChat} />
     </div>
   );
 };
