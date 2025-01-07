@@ -6,6 +6,7 @@ import '../western-theme.css';
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
   const history = useHistory();
 
   useEffect(() => {
@@ -24,10 +25,10 @@ const Login = () => {
           .then(data => {
             if (data.access_token) {
               localStorage.setItem('token', data.access_token);
-              alert("Login successful!");
+              setMessage("Login successful!");
               history.push('/post-login');
             } else {
-              alert(data.msg);
+              setMessage(data.msg);
             }
           });
       });
@@ -49,14 +50,15 @@ const Login = () => {
       .then(data => {
         if (data.access_token) {
           localStorage.setItem('token', data.access_token);
-          alert("Login successful!");
+          setMessage("Login successful!");
           history.push('/post-login');
         } else {
-          alert(data.msg);
+          setMessage(data.msg);
         }
       })
       .catch(error => {
         console.error('Error:', error);
+        setMessage('An error occurred. Please try again.');
       });
   };
 
@@ -64,6 +66,7 @@ const Login = () => {
     <div className="container">
       <BackButton />
       <h2>Login</h2>
+      {message && <p>{message}</p>}
       <input
         type="text"
         placeholder="Username"

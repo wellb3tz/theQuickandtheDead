@@ -5,7 +5,7 @@ const BackButton = () => {
   const history = useHistory();
 
   return (
-    <button onClick={() => history.goBack()} style={{ fontSize: '24px', cursor: 'pointer' }}>
+    <button onClick={() => history.goBack()} style={{ fontSize: '12px', cursor: 'pointer' }}>
       ← Back
     </button>
   );

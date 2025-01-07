@@ -6,6 +6,7 @@ const Register = () => {
   const [telegramId, setTelegramId] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     console.log('Register component mounted');
@@ -34,13 +35,14 @@ const Register = () => {
       .then(response => response.json())
       .then(data => {
         if (data.msg === "User registered successfully") {
-          alert("Registration successful! Please log in.");
+          setMessage("Registration successful! Please log in.");
         } else {
-          alert(data.msg);
+          setMessage(data.msg);
         }
       })
       .catch(error => {
         console.error('Error:', error);
+        setMessage('An error occurred. Please try again.');
       });
   };
 
@@ -48,6 +50,7 @@ const Register = () => {
     <div className="container">
       <BackButton />
       <h2>Register</h2>
+      {message && <p>{message}</p>}
       <input
         type="text"
         placeholder="Username"
