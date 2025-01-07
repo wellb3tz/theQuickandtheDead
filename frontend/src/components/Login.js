@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import BackButton from './BackButton';
+import Spinner from './Spinner';
 import '../western-theme.css';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
   const history = useHistory();
 
   useEffect(() => {
@@ -39,6 +41,7 @@ const Login = () => {
   }, []);
 
   const handleLogin = () => {
+    setLoading(true);
     console.log('Login button clicked');
     fetch('https://thequickandthedead.onrender.com/login', {
       method: 'POST',
@@ -49,6 +52,7 @@ const Login = () => {
     })
       .then(response => response.json())
       .then(data => {
+        setLoading(false);
         if (data.access_token) {
           localStorage.setItem('token', data.access_token);
           localStorage.setItem('username', username); // Store username
@@ -59,6 +63,7 @@ const Login = () => {
         }
       })
       .catch(error => {
+        setLoading(false);
         console.error('Error:', error);
         setMessage('An error occurred. Please try again.');
       });
@@ -69,19 +74,23 @@ const Login = () => {
       <BackButton />
       <h2>Login</h2>
       {message && <p>{message}</p>}
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button onClick={handleLogin}>Login</button>
+      {loading ? <Spinner /> : (
+        <>
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button onClick={handleLogin}>Login</button>
+        </>
+      )}
     </div>
   );
 };

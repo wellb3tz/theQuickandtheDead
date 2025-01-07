@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BackButton from './BackButton';
+import Spinner from './Spinner';
 import '../western-theme.css';
 
 const Register = () => {
@@ -7,6 +8,7 @@ const Register = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     console.log('Register component mounted');
@@ -24,6 +26,7 @@ const Register = () => {
   }, []);
 
   const handleRegister = () => {
+    setLoading(true);
     console.log('Register button clicked');
     fetch('https://thequickandthedead.onrender.com/register', {
       method: 'POST',
@@ -34,6 +37,7 @@ const Register = () => {
     })
       .then(response => response.json())
       .then(data => {
+        setLoading(false);
         if (data.msg === "User registered successfully") {
           setMessage("Registration successful! Please log in.");
         } else {
@@ -41,6 +45,7 @@ const Register = () => {
         }
       })
       .catch(error => {
+        setLoading(false);
         console.error('Error:', error);
         setMessage('An error occurred. Please try again.');
       });
@@ -51,19 +56,23 @@ const Register = () => {
       <BackButton />
       <h2>Register</h2>
       {message && <p>{message}</p>}
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button onClick={handleRegister}>Register</button>
+      {loading ? <Spinner /> : (
+        <>
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button onClick={handleRegister}>Register</button>
+        </>
+      )}
     </div>
   );
 };
