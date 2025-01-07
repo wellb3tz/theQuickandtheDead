@@ -9,19 +9,17 @@ import Chat from './components/Chat';
 
 function App() {
   return (
-    <ErrorBoundary>
-      <Router basename="/theQuickandtheDead">
-        <div className="App">
-          <Switch>
-            <Route path="/" exact component={InitialScreen} />
-            <Route path="/register" component={Register} />
-            <Route path="/login" component={Login} />
-            <Route path="/inventory" component={Inventory} />
-            <Route path="/chat" component={Chat} />
-          </Switch>
-        </div>
-      </Router>
-    </ErrorBoundary>
+    <Router basename="/theQuickandtheDead">
+      <div className="App">
+        <Switch>
+          <Route path="/" exact component={InitialScreen} />
+          <Route path="/register" component={Register} />
+          <Route path="/login" component={Login} />
+          <Route path="/inventory" component={Inventory} />
+          <Route path="/chat" component={Chat} />
+        </Switch>
+      </div>
+    </Router>
   );
 }
 

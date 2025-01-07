@@ -1,10 +1,10 @@
-dary.js
+// src/components/ErrorBoundary.js
 import React from 'react';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false };
   }
 
   static getDerivedStateFromError(error) {
@@ -12,26 +12,12 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.log('Error:', error);
-    console.log('Error Info:', errorInfo);
-    this.setState({
-      error: error,
-      errorInfo: errorInfo
-    });
+    console.error('React Error:', error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div style={{ padding: '20px' }}>
-          <h1>Something went wrong.</h1>
-          <details style={{ whiteSpace: 'pre-wrap' }}>
-            {this.state.error && this.state.error.toString()}
-            <br />
-            {this.state.errorInfo.componentStack}
-          </details>
-        </div>
-      );
+      return <h1>Something went wrong.</h1>;
     }
     return this.props.children;
   }
