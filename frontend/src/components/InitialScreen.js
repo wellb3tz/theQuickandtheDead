@@ -1,14 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const InitialScreen = () => {
   const navigate = useNavigate();
 
+  useEffect(() => {
+    console.log('InitialScreen component mounted');
+  }, []);
+
   const handleRegister = () => {
+    console.log('Register button clicked');
     navigate('/register');
   };
 
   const handleLogin = () => {
+    console.log('Login button clicked');
     navigate('/login');
   };
 
