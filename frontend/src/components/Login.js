@@ -5,25 +5,29 @@ const Login = () => {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
-    window.Telegram.WebApp.ready();
-    window.Telegram.WebApp.onEvent('auth', (authData) => {
-      fetch('https://thequickandthedead.onrender.com/telegram_auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(authData),
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.access_token) {
-            localStorage.setItem('token', data.access_token);
-            alert("Login successful!");
-          } else {
-            alert(data.msg);
-          }
-        });
-    });
+    if (window.Telegram && window.Telegram.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.onEvent('auth', (authData) => {
+        fetch('https://thequickandthedead.onrender.com/telegram_auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(authData),
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.access_token) {
+              localStorage.setItem('token', data.access_token);
+              alert("Login successful!");
+            } else {
+              alert(data.msg);
+            }
+          });
+      });
+    } else {
+      console.error('Telegram WebApp is not defined');
+    }
   }, []);
 
   const handleLogin = () => {

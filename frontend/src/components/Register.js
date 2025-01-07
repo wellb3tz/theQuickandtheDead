@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Register = () => {
   const [telegramId, setTelegramId] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    if (window.Telegram && window.Telegram.WebApp) {
+      window.Telegram.WebApp.ready();
+    } else {
+      console.error('Telegram WebApp is not defined');
+    }
+  }, []);
 
   const handleRegister = () => {
     fetch('https://thequickandthedead.onrender.com/register', {
