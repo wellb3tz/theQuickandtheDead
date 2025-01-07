@@ -31,6 +31,10 @@ const PostLogin = () => {
     history.push('/chat');
   };
 
+  const handleWasteland = () => {
+    history.push('/wasteland-confirmation');
+  };
+
   return (
     <div className="container">
       <h2>Welcome to the Game!</h2>
@@ -41,7 +45,7 @@ const PostLogin = () => {
         </div>
       )}
       <button onClick={() => setMenuOpen(true)} style={{ position: 'fixed', top: '20px', left: '20px', fontSize: '16px' }}>☰</button>
-      <SlidingMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} onLogOff={handleLogOff} onInventory={handleInventory} onChat={handleChat} />
+      <SlidingMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} onLogOff={handleLogOff} onInventory={handleInventory} onChat={handleChat} onWasteland={handleWasteland} />
     </div>
   );
 };

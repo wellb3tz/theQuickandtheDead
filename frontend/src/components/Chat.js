@@ -30,8 +30,7 @@ const Chat = () => {
     if (message.trim()) {
       const msg = { username, text: message };
       socket.emit('message', msg);
-      addMessage(msg);
-      setMessage('');
+      setMessage(''); // Clear the input field
     }
   };
 
