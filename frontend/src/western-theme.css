@@ -1,6 +1,7 @@
 body {
   font-family: 'Almendra', serif;
   background-color: #f4f4f4;
+  background-image: url('/images/background.png');
   background-size: cover;
   background-position: center;
   color: #333;
@@ -49,6 +50,7 @@ input {
   border: 1px solid #8B4513;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  background-image: url('/images/container-background.png');
   background-size: cover;
   background-position: center;
 }
