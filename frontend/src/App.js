@@ -8,7 +8,7 @@ import Chat from './components/Chat';
 
 function App() {
   return (
-    <Router>
+    <Router basename="/theQuickandtheDead">
       <div className="App">
         <Switch>
           <Route path="/" exact component={InitialScreen} />
