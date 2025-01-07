@@ -1,12 +1,15 @@
 body {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'Almendra', serif;
   background-color: #f4f4f4;
+  background-image: url('/path/to/your/background-image.jpg');
+  background-size: cover;
   color: #333;
 }
 
 h1, h2 {
   color: #8B4513;
   text-align: center;
+  font-family: 'Almendra', serif;
 }
 
 button {
@@ -14,14 +17,19 @@ button {
   margin: 10px;
   background-color: #8B4513;
   color: white;
-  border: none;
+  border: 2px solid #A0522D;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 16px;
-  font-family: inherit; /* Inherit font-family from body */
+  font-family: 'Almendra', serif;
+  box-shadow: 0 4px #A0522D;
+  transition: all 0.2s ease;
 }
 
 button:hover {
   background-color: #A0522D;
+  box-shadow: 0 2px #8B4513;
+  transform: translateY(-2px);
 }
 
 input {
@@ -30,7 +38,7 @@ input {
   border: 1px solid #8B4513;
   border-radius: 4px;
   font-size: 16px;
-  font-family: inherit; /* Inherit font-family from body */
+  font-family: 'Almendra', serif;
 }
 
 .container {
@@ -41,4 +49,6 @@ input {
   border: 1px solid #8B4513;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  background-image: url('/path/to/your/container-background-image.jpg');
+  background-size: cover;
 }
