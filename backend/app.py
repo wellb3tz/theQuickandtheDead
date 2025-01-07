@@ -7,13 +7,23 @@ import hashlib
 import hmac
 import time
 from dotenv import load_dotenv
+from flask_socketio import SocketIO, send
+from routes.inventory import inventory_bp
+from flask_cors import CORS
 
 # Load environment variables from .env file
 load_dotenv()
 
+# Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+app.config['SECRET_KEY'] = 'your_secret_key'
 jwt = JWTManager(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Register blueprints
+app.register_blueprint(inventory_bp)
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
@@ -101,5 +111,9 @@ def send_message(chat_id, text):
     }
     requests.post(url, json=payload)
 
+@socketio.on('message')
+def handle_message(msg):
+    send(msg, broadcast=True)
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000)
