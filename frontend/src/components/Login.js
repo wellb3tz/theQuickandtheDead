@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
+import BackButton from './BackButton';
 
 const Login = () => {
   const [telegramId, setTelegramId] = useState('');
   const [password, setPassword] = useState('');
+  const history = useHistory();
 
   useEffect(() => {
     console.log('Login component mounted');
@@ -21,6 +24,7 @@ const Login = () => {
             if (data.access_token) {
               localStorage.setItem('token', data.access_token);
               alert("Login successful!");
+              history.push('/post-login');
             } else {
               alert(data.msg);
             }
@@ -45,6 +49,7 @@ const Login = () => {
         if (data.access_token) {
           localStorage.setItem('token', data.access_token);
           alert("Login successful!");
+          history.push('/post-login');
         } else {
           alert(data.msg);
         }
@@ -53,6 +58,7 @@ const Login = () => {
 
   return (
     <div>
+      <BackButton />
       <h2>Login</h2>
       <input
         type="text"
@@ -67,8 +73,6 @@ const Login = () => {
         onChange={(e) => setPassword(e.target.value)}
       />
       <button onClick={handleLogin}>Login</button>
-      <h2>Login with Telegram</h2>
-      <button onClick={() => window.Telegram.WebApp.showAuth()}>Login</button>
     </div>
   );
 };

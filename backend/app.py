@@ -45,11 +45,7 @@ def register():
     username = request.json.get('username')
     password = request.json.get('password')
     
-    cursor.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
-    user = cursor.fetchone()
-    if user:
-        return jsonify({"msg": "User already exists"}), 400
-    
+    # Allow multiple accounts with the same Telegram ID
     cursor.execute("INSERT INTO users (telegram_id, username, password) VALUES (%s, %s, %s)", (telegram_id, username, password))
     conn.commit()
     return jsonify({"msg": "User registered successfully"}), 200

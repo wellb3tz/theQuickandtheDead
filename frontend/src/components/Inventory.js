@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BackButton from './BackButton';
 
 const Inventory = () => {
   const [items, setItems] = useState([]);
@@ -11,6 +12,7 @@ const Inventory = () => {
 
   return (
     <div>
+      <BackButton />
       <h2>Inventory</h2>
       <ul>
         {items.map((item, index) => (
