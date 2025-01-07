@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BackButton from './BackButton';
-import Spinner from '../Spinner';
+import Spinner from './Spinner';
 import '../western-theme.css';
 
 const Register = () => {

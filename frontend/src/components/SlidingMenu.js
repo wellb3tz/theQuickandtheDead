@@ -1,5 +1,5 @@
 import React from 'react';
-import './sliding-menu.css';
+import '../sliding-menu.css';
 
 const SlidingMenu = ({ isOpen, onClose, onLogOff }) => {
   return (
