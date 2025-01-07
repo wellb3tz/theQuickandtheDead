@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BackButton from './BackButton';
-import './western-theme.css';
+import '../western-theme.css';
 
 const Register = () => {
   const [telegramId, setTelegramId] = useState('');
