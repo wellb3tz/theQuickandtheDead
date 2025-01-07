@@ -1,8 +1,8 @@
 body {
   font-family: 'Almendra', serif;
   background-color: #f4f4f4;
-  background-image: url('/path/to/your/background-image.jpg');
   background-size: cover;
+  background-position: center;
   color: #333;
 }
 
@@ -49,6 +49,6 @@ input {
   border: 1px solid #8B4513;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  background-image: url('/path/to/your/container-background-image.jpg');
   background-size: cover;
+  background-position: center;
 }
