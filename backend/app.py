@@ -1,5 +1,6 @@
 import os
 import psycopg2
+from psycopg2.errors import UniqueViolation
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import requests
@@ -50,6 +51,9 @@ def register():
         cursor.execute("INSERT INTO users (telegram_id, username, password) VALUES (%s, %s, %s)", (telegram_id, username, password))
         conn.commit()
         return jsonify({"msg": "User registered successfully"}), 200
+    except UniqueViolation:
+        conn.rollback()  # Rollback the transaction on error
+        return jsonify({"msg": "User already exists"}), 400
     except Exception as e:
         conn.rollback()  # Rollback the transaction on error
         return jsonify({"msg": str(e)}), 500
