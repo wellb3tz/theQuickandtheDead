@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import SlidingMenu from './SlidingMenu';
 import '../western-theme.css';
 
 const PostLogin = () => {
   const [username, setUsername] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const history = useHistory();
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
@@ -16,7 +18,11 @@ const PostLogin = () => {
   const handleLogOff = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
-    window.location.href = '/login';
+    history.push('/login');
+  };
+
+  const handleInventory = () => {
+    history.push('/inventory');
   };
 
   return (
@@ -29,7 +35,7 @@ const PostLogin = () => {
         </div>
       )}
       <button onClick={() => setMenuOpen(true)} style={{ position: 'fixed', top: '20px', left: '20px', fontSize: '16px' }}>☰</button>
-      <SlidingMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} onLogOff={handleLogOff} />
+      <SlidingMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} onLogOff={handleLogOff} onInventory={handleInventory} />
     </div>
   );
 };
