@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/theQuickandtheDead/static/css/main.52ca4bd8.css",
-    "main.js": "/theQuickandtheDead/static/js/main.6eb6ac8f.js",
+    "main.css": "/theQuickandtheDead/static/css/main.124181c5.css",
+    "main.js": "/theQuickandtheDead/static/js/main.4f986e3d.js",
     "index.html": "/theQuickandtheDead/index.html",
-    "main.52ca4bd8.css.map": "/theQuickandtheDead/static/css/main.52ca4bd8.css.map",
-    "main.6eb6ac8f.js.map": "/theQuickandtheDead/static/js/main.6eb6ac8f.js.map"
+    "main.124181c5.css.map": "/theQuickandtheDead/static/css/main.124181c5.css.map",
+    "main.4f986e3d.js.map": "/theQuickandtheDead/static/js/main.4f986e3d.js.map"
   },
   "entrypoints": [
-    "static/css/main.52ca4bd8.css",
-    "static/js/main.6eb6ac8f.js"
+    "static/css/main.124181c5.css",
+    "static/js/main.4f986e3d.js"
   ]
 }
