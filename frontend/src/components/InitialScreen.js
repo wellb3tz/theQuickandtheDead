@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
+import './western-theme.css';
 
 const InitialScreen = () => {
   const history = useHistory();
@@ -19,7 +20,7 @@ const InitialScreen = () => {
   };
 
   return (
-    <div>
+    <div className="container">
       <h1>Welcome to the Game</h1>
       <button onClick={handleRegister}>Register</button>
       <button onClick={handleLogin}>Login</button>

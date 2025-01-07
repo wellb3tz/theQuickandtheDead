@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import BackButton from './BackButton';
+import './western-theme.css';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -60,7 +61,7 @@ const Login = () => {
   };
 
   return (
-    <div>
+    <div className="container">
       <BackButton />
       <h2>Login</h2>
       <input

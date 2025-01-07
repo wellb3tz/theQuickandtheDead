@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BackButton from './BackButton';
+import './western-theme.css';
 
 const Register = () => {
   const [telegramId, setTelegramId] = useState('');
@@ -44,7 +45,7 @@ const Register = () => {
   };
 
   return (
-    <div>
+    <div className="container">
       <BackButton />
       <h2>Register</h2>
       <input
