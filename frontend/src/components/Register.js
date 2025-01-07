@@ -37,6 +37,9 @@ const Register = () => {
         } else {
           alert(data.msg);
         }
+      })
+      .catch(error => {
+        console.error('Error:', error);
       });
   };
 

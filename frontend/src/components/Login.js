@@ -3,7 +3,7 @@ import { useHistory } from 'react-router-dom';
 import BackButton from './BackButton';
 
 const Login = () => {
-  const [telegramId, setTelegramId] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const history = useHistory();
 
@@ -42,7 +42,7 @@ const Login = () => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ telegram_id: telegramId, password }),
+      body: JSON.stringify({ username, password }),
     })
       .then(response => response.json())
       .then(data => {
@@ -53,6 +53,9 @@ const Login = () => {
         } else {
           alert(data.msg);
         }
+      })
+      .catch(error => {
+        console.error('Error:', error);
       });
   };
 
@@ -62,9 +65,9 @@ const Login = () => {
       <h2>Login</h2>
       <input
         type="text"
-        placeholder="Telegram ID"
-        value={telegramId}
-        onChange={(e) => setTelegramId(e.target.value)}
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
       />
       <input
         type="password"

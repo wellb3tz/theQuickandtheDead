@@ -41,27 +41,35 @@ def check_telegram_auth(data):
 
 @app.route('/register', methods=['POST'])
 def register():
-    telegram_id = request.json.get('telegram_id')
-    username = request.json.get('username')
-    password = request.json.get('password')
-    
-    # Allow multiple accounts with the same Telegram ID
-    cursor.execute("INSERT INTO users (telegram_id, username, password) VALUES (%s, %s, %s)", (telegram_id, username, password))
-    conn.commit()
-    return jsonify({"msg": "User registered successfully"}), 200
+    try:
+        telegram_id = request.json.get('telegram_id')
+        username = request.json.get('username')
+        password = request.json.get('password')
+        
+        # Allow multiple accounts with the same Telegram ID
+        cursor.execute("INSERT INTO users (telegram_id, username, password) VALUES (%s, %s, %s)", (telegram_id, username, password))
+        conn.commit()
+        return jsonify({"msg": "User registered successfully"}), 200
+    except Exception as e:
+        conn.rollback()  # Rollback the transaction on error
+        return jsonify({"msg": str(e)}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
-    telegram_id = request.json.get('telegram_id')
-    password = request.json.get('password')
-    
-    cursor.execute("SELECT * FROM users WHERE telegram_id = %s AND password = %s", (telegram_id, password))
-    user = cursor.fetchone()
-    if not user:
-        return jsonify({"msg": "Bad telegram_id or password"}), 401
-    
-    access_token = create_access_token(identity=telegram_id)
-    return jsonify(access_token=access_token), 200
+    try:
+        username = request.json.get('username')
+        password = request.json.get('password')
+        
+        cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({"msg": "Bad username or password"}), 401
+        
+        access_token = create_access_token(identity=username)
+        return jsonify(access_token=access_token), 200
+    except Exception as e:
+        conn.rollback()  # Rollback the transaction on error
+        return jsonify({"msg": str(e)}), 500
 
 @app.route('/telegram_auth', methods=['POST'])
 def telegram_auth():
