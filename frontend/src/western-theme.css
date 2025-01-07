@@ -17,6 +17,7 @@ button {
   border: none;
   cursor: pointer;
   font-size: 16px;
+  font-family: inherit; /* Inherit font-family from body */
 }
 
 button:hover {
@@ -29,6 +30,7 @@ input {
   border: 1px solid #8B4513;
   border-radius: 4px;
   font-size: 16px;
+  font-family: inherit; /* Inherit font-family from body */
 }
 
 .container {

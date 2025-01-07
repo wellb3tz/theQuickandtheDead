@@ -25,6 +25,7 @@ const Login = () => {
           .then(data => {
             if (data.access_token) {
               localStorage.setItem('token', data.access_token);
+              localStorage.setItem('username', authData.username); // Store username
               setMessage("Login successful!");
               history.push('/post-login');
             } else {
@@ -50,6 +51,7 @@ const Login = () => {
       .then(data => {
         if (data.access_token) {
           localStorage.setItem('token', data.access_token);
+          localStorage.setItem('username', username); // Store username
           setMessage("Login successful!");
           history.push('/post-login');
         } else {
