@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import BackButton from './BackButton';
+import { useChat } from '../contexts/ChatContext';
 import '../western-theme.css';
 
 const socket = io('https://thequickandthedead.onrender.com');
 
 const Chat = () => {
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([]);
   const [username, setUsername] = useState('');
+  const { messages, addMessage } = useChat();
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
@@ -17,17 +18,19 @@ const Chat = () => {
     }
 
     socket.on('message', (msg) => {
-      setMessages((prevMessages) => [...prevMessages, msg]);
+      addMessage(msg);
     });
 
     return () => {
       socket.off('message');
     };
-  }, []);
+  }, [addMessage]);
 
   const sendMessage = () => {
     if (message.trim()) {
-      socket.emit('message', { username, text: message });
+      const msg = { username, text: message };
+      socket.emit('message', msg);
+      addMessage(msg);
       setMessage('');
     }
   };

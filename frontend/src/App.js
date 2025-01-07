@@ -7,22 +7,25 @@ import Login from './components/Login';
 import Inventory from './components/Inventory';
 import Chat from './components/Chat';
 import PostLogin from './components/PostLogin';
+import { ChatProvider } from './contexts/ChatContext';
 
 function App() {
   return (
     <ErrorBoundary>
-      <Router basename="/theQuickandtheDead">
-        <div className="App">
-          <Switch>
-            <Route path="/" exact component={InitialScreen} />
-            <Route path="/register" component={Register} />
-            <Route path="/login" component={Login} />
-            <Route path="/inventory" component={Inventory} />
-            <Route path="/chat" component={Chat} />
-            <Route path="/post-login" component={PostLogin} />
-          </Switch>
-        </div>
-      </Router>
+      <ChatProvider>
+        <Router basename="/theQuickandtheDead">
+          <div className="App">
+            <Switch>
+              <Route path="/" exact component={InitialScreen} />
+              <Route path="/register" component={Register} />
+              <Route path="/login" component={Login} />
+              <Route path="/inventory" component={Inventory} />
+              <Route path="/chat" component={Chat} />
+              <Route path="/post-login" component={PostLogin} />
+            </Switch>
+          </div>
+        </Router>
+      </ChatProvider>
     </ErrorBoundary>
   );
 }
