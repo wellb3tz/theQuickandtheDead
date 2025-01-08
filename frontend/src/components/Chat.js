@@ -3,7 +3,6 @@ import io from 'socket.io-client';
 import BackButton from './BackButton';
 import { useChat } from '../contexts/ChatContext';
 import '../western-theme.css';
-import ShootableButton from './ShootableButton';
 
 const socket = io('https://thequickandthedead.onrender.com');
 
@@ -52,7 +51,7 @@ const Chat = () => {
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Type a message"
       />
-      <ShootableButton onClick={sendMessage}>Send</ShootableButton>
+      <button onClick={sendMessage}>Send</button>
     </div>
   );
 };

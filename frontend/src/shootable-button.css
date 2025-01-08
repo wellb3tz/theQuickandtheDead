@@ -12,12 +12,13 @@
   
   .bullet-hole {
     position: absolute;
-    width: 30px; /* Adjust size as needed */
-    height: 30px; /* Adjust size as needed */
-    background: url('https://i.imgur.com/aonTGHx.png') no-repeat center center;
+    width: 60px; /* Adjust size as needed */
+    height: 60px; /* Adjust size as needed */
+    background: url('https://i.imgur.com/cyzSiac.png') no-repeat center center;
     background-size: contain;
     pointer-events: none;
     z-index: 1000;
+    transform: translate(-50%, -50%);
   }
   
   .shatter-piece {

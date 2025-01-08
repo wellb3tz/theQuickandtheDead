@@ -11,10 +11,15 @@ import WastelandConfirmation from './components/WastelandConfirmation';
 import Wasteland from './components/Wasteland';
 import { ChatProvider } from './contexts/ChatContext';
 import './western-theme.css';
+import gunshotSound from '../sounds/gunshot.mp3'; // Ensure you have this sound file
 
 const App = () => {
   useEffect(() => {
     const handleShot = (e) => {
+      // Play gunshot sound
+      const audio = new Audio(gunshotSound);
+      audio.play();
+
       const hole = document.createElement('div');
       hole.className = 'bullet-hole';
       hole.style.left = `${e.clientX}px`;

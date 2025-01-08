@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import '../shootable-button.css';
+import gunshotSound from '../sounds/gunshot.mp3'; // Ensure you have this sound file
 
 const ShootableButton = ({ onClick, children }) => {
   const [isShattered, setIsShattered] = useState(false);
@@ -10,11 +11,15 @@ const ShootableButton = ({ onClick, children }) => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Play gunshot sound
+    const audio = new Audio(gunshotSound);
+    audio.play();
+
     // Create bullet hole
     const hole = document.createElement('div');
     hole.className = 'bullet-hole';
-    hole.style.left = x + 'px';
-    hole.style.top = y + 'px';
+    hole.style.left = `${x}px`;
+    hole.style.top = `${y}px`;
     btn.appendChild(hole);
 
     // Create shatter pieces
