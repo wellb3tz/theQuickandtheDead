@@ -9,11 +9,12 @@
       default-src 'self'; 
       connect-src 'self' https://thequickandthedead.onrender.com wss://thequickandthedead.onrender.com https://telegram.org; 
       font-src 'self' data: https://fonts.gstatic.com; 
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; /* Allow stylesheets from Google Fonts */
+      style-src 'self' https://fonts.googleapis.com; /* Allow stylesheets from Google Fonts */
       img-src 'self' https://i.imgur.com; /* Allow images from Imgur */
+      script-src 'self' 'nonce-2726c7f26c'; /* Allow inline scripts with nonce */
     ">
     <link href="https://fonts.googleapis.com/css2?family=Almendra:wght@400;700&display=swap" rel="stylesheet">
-    <script>
+    <script nonce="2726c7f26c">
       if (window.Telegram && window.Telegram.WebApp) {
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.onEvent('backButtonClicked', function() {
