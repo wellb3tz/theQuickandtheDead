@@ -3,6 +3,7 @@ import io from 'socket.io-client';
 import BackButton from './BackButton';
 import { useChat } from '../contexts/ChatContext';
 import '../western-theme.css';
+import ShootableButton from './ShootableButton';
 
 const socket = io('https://thequickandthedead.onrender.com');
 
