@@ -10,13 +10,26 @@ import PostLogin from './components/PostLogin';
 import WastelandConfirmation from './components/WastelandConfirmation';
 import Wasteland from './components/Wasteland';
 import { ChatProvider } from './contexts/ChatContext';
+import './western-theme.css';
 
-function App() {
+const App = () => {
+  const handleShot = (e) => {
+    const hole = document.createElement('div');
+    hole.className = 'bullet-hole';
+    hole.style.left = `${e.clientX}px`;
+    hole.style.top = `${e.clientY}px`;
+    document.body.appendChild(hole);
+
+    setTimeout(() => {
+      hole.remove();
+    }, 2000);
+  };
+
   return (
     <ErrorBoundary>
       <ChatProvider>
         <Router basename="/theQuickandtheDead">
-          <div className="App">
+          <div className="App" onClick={handleShot}>
             <Switch>
               <Route path="/" exact component={InitialScreen} />
               <Route path="/register" component={Register} />
@@ -32,6 +45,6 @@ function App() {
       </ChatProvider>
     </ErrorBoundary>
   );
-}
+};
 
 export default App;
