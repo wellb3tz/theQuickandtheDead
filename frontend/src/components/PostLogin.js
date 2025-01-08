@@ -6,6 +6,7 @@ import '../western-theme.css';
 const PostLogin = () => {
   const [username, setUsername] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState(0); // State for online users
   const history = useHistory();
 
   useEffect(() => {
@@ -15,6 +16,12 @@ const PostLogin = () => {
     } else {
       history.push('/login'); // Redirect to login if not logged in
     }
+
+    // Fetch the number of online users (example endpoint)
+    fetch('https://thequickandthedead.onrender.com/online-users')
+      .then(response => response.json())
+      .then(data => setOnlineUsers(data.onlineUsers))
+      .catch(error => console.error('Error fetching online users:', error));
   }, [history]);
 
   const handleLogOff = () => {
@@ -41,7 +48,8 @@ const PostLogin = () => {
       <p>You have successfully logged in.</p>
       {username && (
         <div style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#000000', color: '#ffffff', padding: '10px', borderRadius: '4px' }}>
-          Logged in as: {username}
+          <p>Online: {onlineUsers}</p> {/* Display online users */}
+          <p>Logged in as: {username}</p>
         </div>
       )}
       <button onClick={() => setMenuOpen(true)} style={{ position: 'fixed', top: '20px', left: '20px', fontSize: '16px' }}>☰</button>
