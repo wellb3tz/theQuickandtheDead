@@ -1,7 +1,7 @@
 body {
   font-family: 'Almendra', serif;
   background-color: #f4f4f4;
-  background-image: url('/frontend/public/images/background.png'); /* Correct path */
+  background-image: url('https://i.imgur.com/hx3jGha.png'); /* Correct path */
   background-size: cover;
   background-position: center;
   color: #333;
@@ -50,7 +50,7 @@ input {
   border: 1px solid #8B4513;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  background-image: url('/frontend/public/images/container-background.png'); /* Correct path */
+  background-image: url('https://i.imgur.com/hx3jGha.png'); /* Correct path */
   background-size: cover;
   background-position: center;
 }
