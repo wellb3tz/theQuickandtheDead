@@ -69,6 +69,19 @@ const Login = () => {
       });
   };
 
+  const handleShot = (e) => {
+    const button = e.target;
+    const rect = button.getBoundingClientRect();
+    const hole = document.createElement('div');
+    hole.className = 'hole';
+    hole.style.left = `${e.clientX - rect.left - 5}px`;
+    hole.style.top = `${e.clientY - rect.top - 5}px`;
+    button.appendChild(hole);
+    setTimeout(() => {
+      button.removeChild(hole);
+    }, 500);
+  };
+
   return (
     <div className="container">
       <BackButton />
@@ -88,7 +101,7 @@ const Login = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <button onClick={handleLogin}>Login   </button>
+          <button onClick={(e) => { handleLogin(); handleShot(e); }}>Login</button>
         </>
       )}
     </div>
