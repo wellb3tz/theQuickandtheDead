@@ -69,23 +69,6 @@ const Login = () => {
       });
   };
 
-  const handleBreak = (e) => {
-    const button = e.target;
-    const rect = button.getBoundingClientRect();
-    for (let i = 0; i < 10; i++) {
-      const fragment = document.createElement('div');
-      fragment.className = 'fragment';
-      fragment.style.left = `${e.clientX - rect.left - 5}px`;
-      fragment.style.top = `${e.clientY - rect.top - 5}px`;
-      fragment.style.setProperty('--x', `${Math.random() * 200 - 100}px`);
-      fragment.style.setProperty('--y', `${Math.random() * 200 - 100}px`);
-      button.appendChild(fragment);
-      setTimeout(() => {
-        button.removeChild(fragment);
-      }, 500);
-    }
-  };
-
   return (
     <div className="container">
       <BackButton />
@@ -105,7 +88,7 @@ const Login = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <button onClick={(e) => { handleLogin(); handleBreak(e); }}>Login</button>
+          <button onClick={handleLogin}>Login   </button>
         </>
       )}
     </div>
