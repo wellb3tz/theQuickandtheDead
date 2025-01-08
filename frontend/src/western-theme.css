@@ -61,45 +61,36 @@ input {
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.1); /* White shadow */
 }
 
-@keyframes shot {
+.shootable-button {
+  position: relative;
+  overflow: hidden;
+  transition: opacity 0.5s;
+}
+
+.bullet-hole {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 30%, transparent 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.shatter-piece {
+  position: absolute;
+  background: currentColor;
+  pointer-events: none;
+}
+
+@keyframes shatter {
   0% {
-    transform: scale(0);
+    transform: translate(0) rotate(0);
     opacity: 1;
   }
   100% {
-    transform: scale(1);
+    transform: translate(var(--tx), var(--ty)) rotate(var(--rot));
     opacity: 0;
   }
-}
-
-.hole {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background-color: #ffffff; /* White hole */
-  border: 2px solid #000000; /* Black border */
-  border-radius: 50%;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5); /* Black shadow */
-  animation: shot 0.5s forwards;
-}
-
-@keyframes break {
-  0% {
-    transform: translate(0, 0) scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(var(--x), var(--y)) scale(0.5);
-    opacity: 0;
-  }
-}
-
-.fragment {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background-color: #ffffff; /* White fragment */
-  border: 2px solid #000000; /* Black border */
-  border-radius: 50%;
-  animation: break 0.5s forwards;
 }
