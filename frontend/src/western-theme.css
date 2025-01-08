@@ -19,8 +19,8 @@ h1, h2 {
 }
 
 button {
-  position: relative; /* Ensure the button is positioned relative to contain the hole */
-  overflow: hidden; /* Hide overflow to ensure the hole effect stays within the button */
+  position: relative; /* Ensure the button is positioned relative to contain the fragments */
+  overflow: hidden; /* Hide overflow to ensure the fragments stay within the button */
   padding: 10px 20px;
   margin: 10px;
   background-color: #000000; /* Black background */
@@ -81,4 +81,25 @@ input {
   border-radius: 50%;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.5); /* Black shadow */
   animation: shot 0.5s forwards;
+}
+
+@keyframes break {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--x), var(--y)) scale(0.5);
+    opacity: 0;
+  }
+}
+
+.fragment {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: #ffffff; /* White fragment */
+  border: 2px solid #000000; /* Black border */
+  border-radius: 50%;
+  animation: break 0.5s forwards;
 }
