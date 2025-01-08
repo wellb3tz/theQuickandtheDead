@@ -1,28 +1,22 @@
-import React, { useState } from 'react';
-import Options from './Options';
+import React from 'react';
+import { useHistory } from 'react-router-dom';
 import '../sliding-menu.css';
 
-const SlidingMenu = ({ isOpen, onClose, onLogOff, onInventory, onChat, onWasteland, volume, setVolume }) => {
-  const [showOptions, setShowOptions] = useState(false);
+const SlidingMenu = ({ isOpen, onClose, onLogOff, onInventory, onChat, onWasteland }) => {
+  const history = useHistory();
 
-  const handleVolumeChange = (newVolume) => {
-    setVolume(newVolume);
+  const handleOptions = () => {
+    history.push('/options');
   };
 
   return (
     <div className={`sliding-menu ${isOpen ? 'open' : ''}`}>
       <button className="close-button" onClick={onClose}>×</button>
       <div className="menu-content">
-        {showOptions ? (
-          <Options onVolumeChange={handleVolumeChange} />
-        ) : (
-          <>
-            <button onClick={onInventory}>Inventory</button>
-            <button onClick={onChat}>Chat</button>
-            <button onClick={onWasteland}>Wasteland</button>
-            <button onClick={() => setShowOptions(true)}>Options</button>
-          </>
-        )}
+        <button onClick={onInventory}>Inventory</button>
+        <button onClick={onChat}>Chat</button>
+        <button onClick={onWasteland}>Wasteland</button>
+        <button onClick={handleOptions}>Options</button>
       </div>
       <div className="menu-footer">
         <button onClick={onLogOff}>Log off</button>

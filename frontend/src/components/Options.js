@@ -1,28 +1,29 @@
 import React, { useState } from 'react';
+import BackButton from './BackButton';
+import '../western-theme.css';
 
-const Options = ({ onVolumeChange }) => {
-  const [volume, setVolume] = useState(1);
+const Options = () => {
+  const [volume, setVolume] = useState(50);
 
   const handleVolumeChange = (e) => {
-    const newVolume = e.target.value;
-    setVolume(newVolume);
-    onVolumeChange(newVolume);
+    setVolume(e.target.value);
   };
 
   return (
-    <div className="options-menu">
-      <label htmlFor="volume-slider">Sound volume</label>
-      <input
-        type="range"
-        id="volume-slider"
-        min="0"
-        max="1"
-        step="0.01"
-        value={volume}
-        onChange={handleVolumeChange}
-      />
+    <div className="container">
+      <BackButton />
+      <h2>Options</h2>
+      <div>
+        <label>Sound volume</label>
+        <input 
+          type="range" 
+          min="0" 
+          max="100" 
+          value={volume}
+          onChange={handleVolumeChange}
+        />
+        <span>{volume}</span>
+      </div>
     </div>
   );
 };
-
-export default Options;

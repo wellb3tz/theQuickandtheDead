@@ -9,6 +9,7 @@ import Chat from './components/Chat';
 import PostLogin from './components/PostLogin';
 import WastelandConfirmation from './components/WastelandConfirmation';
 import Wasteland from './components/Wasteland';
+import Options from './components/Options';
 import { ChatProvider } from './contexts/ChatContext';
 import './western-theme.css';
 import gunshotSound from './sounds/gunshot.mp3'; // Ensure you have this sound file
@@ -52,6 +53,7 @@ const App = () => {
               <Route path="/post-login" component={PostLogin} />
               <Route path="/wasteland-confirmation" component={WastelandConfirmation} />
               <Route path="/wasteland" component={Wasteland} />
+              <Route path="/options" component={Options} />
             </Switch>
           </div>
         </Router>
