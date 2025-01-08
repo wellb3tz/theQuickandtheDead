@@ -4,16 +4,16 @@ html, body {
   padding: 0; /* Remove default padding */
   font-family: 'Almendra', serif;
   background-color: #f4f4f4;
-  background-image: url('https://i.imgur.com/hx3jGha.png'); /* Full URL */
+  background-image: url('https://i.imgur.com/J9UM9pA.png'); /* Full URL */
   background-size: cover; /* Ensure the image covers the entire screen */
   background-repeat: no-repeat; /* Prevent the image from repeating */
   background-position: center; /* Center the image */
   background-attachment: fixed; /* Keep the background fixed during scrolling */
-  color: #333;
+  color: #ffffff; /* White text */
 }
 
 h1, h2 {
-  color: #8B4513;
+  color: #ffffff; /* White text */
   text-align: center;
   font-family: 'Almendra', serif;
 }
@@ -21,27 +21,29 @@ h1, h2 {
 button {
   padding: 10px 20px;
   margin: 10px;
-  background-color: #8B4513;
-  color: white;
-  border: 2px solid #A0522D;
+  background-color: #000000; /* Black background */
+  color: #ffffff; /* White text */
+  border: 2px solid #ffffff; /* White border */
   border-radius: 4px;
   cursor: pointer;
   font-size: 16px;
   font-family: 'Almendra', serif;
-  box-shadow: 0 4px #A0522D;
+  box-shadow: 0 4px #ffffff; /* White shadow */
   transition: all 0.2s ease;
 }
 
 button:hover {
-  background-color: #A0522D;
-  box-shadow: 0 2px #8B4513;
+  background-color: #333333; /* Darker black background on hover */
+  box-shadow: 0 2px #ffffff; /* White shadow */
   transform: translateY(-2px);
 }
 
 input {
   padding: 10px;
   margin: 10px;
-  border: 1px solid #8B4513;
+  background-color: #000000; /* Black background */
+  color: #ffffff; /* White text */
+  border: 1px solid #ffffff; /* White border */
   border-radius: 4px;
   font-size: 16px;
   font-family: 'Almendra', serif;
@@ -51,12 +53,8 @@ input {
   max-width: 600px;
   margin: 0 auto;
   padding: 20px;
-  background-color: white;
-  border: 1px solid #8B4513;
+  background-color: #000000; /* Black background */
+  border: 1px solid #ffffff; /* White border */
   border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  background-image: url('https://i.imgur.com/hx3jGha.png'); /* Full URL */
-  background-size: cover; /* Ensure the image covers the entire container */
-  background-repeat: no-repeat; /* Prevent the image from repeating */
-  background-position: center; /* Center the image */
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1); /* White shadow */
 }
