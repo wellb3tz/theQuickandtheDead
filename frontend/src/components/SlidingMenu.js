@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import Options from './Options';
 import '../sliding-menu.css';
 
-const SlidingMenu = ({ isOpen, onClose, onLogOff, onInventory, onChat, onWasteland }) => {
+const SlidingMenu = ({ isOpen, onClose, onLogOff, onInventory, onChat, onWasteland, volume, setVolume }) => {
   const [showOptions, setShowOptions] = useState(false);
-  const [volume, setVolume] = useState(1);
 
   const handleVolumeChange = (newVolume) => {
     setVolume(newVolume);

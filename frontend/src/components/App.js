@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import SlidingMenu from './SlidingMenu';
 import '../styles/western-theme.css';
 import gunshotSound from '../sounds/gunshot.mp3'; // Ensure you have this sound file
 
@@ -32,6 +33,7 @@ const App = () => {
 
   return (
     <div>
+      <SlidingMenu volume={volume} setVolume={setVolume} />
       {/* Your app content */}
     </div>
   );
