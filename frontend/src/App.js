@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import InitialScreen from './components/InitialScreen';
@@ -13,23 +13,31 @@ import { ChatProvider } from './contexts/ChatContext';
 import './western-theme.css';
 
 const App = () => {
-  const handleShot = (e) => {
-    const hole = document.createElement('div');
-    hole.className = 'bullet-hole';
-    hole.style.left = `${e.clientX}px`;
-    hole.style.top = `${e.clientY}px`;
-    document.body.appendChild(hole);
+  useEffect(() => {
+    const handleShot = (e) => {
+      const hole = document.createElement('div');
+      hole.className = 'bullet-hole';
+      hole.style.left = `${e.clientX}px`;
+      hole.style.top = `${e.clientY}px`;
+      document.body.appendChild(hole);
 
-    setTimeout(() => {
-      hole.remove();
-    }, 2000);
-  };
+      setTimeout(() => {
+        hole.remove();
+      }, 2000);
+    };
+
+    document.addEventListener('click', handleShot);
+
+    return () => {
+      document.removeEventListener('click', handleShot);
+    };
+  }, []);
 
   return (
     <ErrorBoundary>
       <ChatProvider>
         <Router basename="/theQuickandtheDead">
-          <div className="App" onClick={handleShot}>
+          <div className="App">
             <Switch>
               <Route path="/" exact component={InitialScreen} />
               <Route path="/register" component={Register} />

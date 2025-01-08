@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import '../shootable-button.css';
 
 const ShootableButton = ({ onClick, children }) => {
+  const [isShattered, setIsShattered] = useState(false);
+
   const handleShot = (e) => {
     const btn = e.currentTarget;
     const rect = btn.getBoundingClientRect();
@@ -28,7 +30,10 @@ const ShootableButton = ({ onClick, children }) => {
 
     // Fade out button
     setTimeout(() => {
-      btn.style.opacity = '0';
+      setIsShattered(true);
+      setTimeout(() => {
+        setIsShattered(false);
+      }, 1000); // Adjust time as needed
     }, 500);
 
     // Call the onClick handler
@@ -38,7 +43,7 @@ const ShootableButton = ({ onClick, children }) => {
   };
 
   return (
-    <button className="shootable-button" onClick={handleShot}>
+    <button className="shootable-button" onClick={handleShot} style={{ display: isShattered ? 'none' : 'block' }}>
       {children}
     </button>
   );

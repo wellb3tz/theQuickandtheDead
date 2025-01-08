@@ -12,10 +12,10 @@
   
   .bullet-hole {
     position: absolute;
-    width: 10px;
-    height: 10px;
-    background: black;
-    border-radius: 50%;
+    width: 30px; /* Adjust size as needed */
+    height: 30px; /* Adjust size as needed */
+    background: url('https://i.imgur.com/aonTGHx.png') no-repeat center center;
+    background-size: contain;
     pointer-events: none;
     z-index: 1000;
   }
