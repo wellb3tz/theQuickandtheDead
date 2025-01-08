@@ -27,3 +27,5 @@ const Options = () => {
     </div>
   );
 };
+
+export default Options;
