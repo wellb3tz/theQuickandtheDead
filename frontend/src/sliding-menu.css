@@ -4,8 +4,8 @@
   left: -250px;
   width: 250px;
   height: 100%;
-  background-color: #8B4513;
-  color: white;
+  background-color: #000000; /* Black background */
+  color: #ffffff; /* White text */
   transition: left 0.3s ease;
   z-index: 1000;
   padding: 20px;
@@ -21,7 +21,7 @@
 .close-button {
   background: none;
   border: none;
-  color: white;
+  color: #ffffff; /* White text */
   font-size: 24px;
   cursor: pointer;
   position: absolute;
@@ -34,17 +34,18 @@
 }
 
 .menu-content button {
-  background-color: #A0522D;
-  color: white;
-  border: none;
+  background-color: #000000; /* Black background */
+  color: #ffffff; /* White text */
+  border: 2px solid #ffffff; /* White border */
   padding: 10px 20px;
   cursor: pointer;
   font-size: 16px;
-  font-family: inherit;
+  font-family: 'Almendra', serif;
+  margin-bottom: 10px;
 }
 
 .menu-content button:hover {
-  background-color: #8B4513;
+  background-color: #333333; /* Darker black background on hover */
 }
 
 .menu-footer {
@@ -52,15 +53,15 @@
 }
 
 .menu-footer button {
-  background-color: #A0522D;
-  color: white;
-  border: none;
+  background-color: #000000; /* Black background */
+  color: #ffffff; /* White text */
+  border: 2px solid #ffffff; /* White border */
   padding: 10px 20px;
   cursor: pointer;
   font-size: 16px;
-  font-family: inherit;
+  font-family: 'Almendra', serif;
 }
 
 .menu-footer button:hover {
-  background-color: #8B4513;
+  background-color: #333333; /* Darker black background on hover */
 }

@@ -40,7 +40,7 @@ const PostLogin = () => {
       <h2>Welcome to the Game!</h2>
       <p>You have successfully logged in.</p>
       {username && (
-        <div style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#8B4513', color: 'white', padding: '10px', borderRadius: '4px' }}>
+        <div style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#000000', color: '#ffffff', padding: '10px', borderRadius: '4px' }}>
           Logged in as: {username}
         </div>
       )}
