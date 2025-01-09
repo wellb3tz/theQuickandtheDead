@@ -7,8 +7,9 @@
 
 .inventory-layout {
   display: flex;
-  justify-content: space-between;
-  width: 80%;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
   margin-top: 20px;
 }
 
@@ -16,6 +17,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-bottom: 20px;
 }
 
 .slot {
@@ -119,4 +121,19 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+/* Responsive design for narrow devices */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(4, 40px); /* 4 columns */
+    grid-template-rows: repeat(16, 40px); /* 16 rows */
+  }
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: repeat(2, 40px); /* 2 columns */
+    grid-template-rows: repeat(32, 40px); /* 32 rows */
+  }
 }
