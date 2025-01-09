@@ -13,6 +13,7 @@ const PostLogin = ({ volume }) => {
   const [username, setUsername] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(0);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const history = useHistory();
 
   useEffect(() => {
@@ -36,8 +37,14 @@ const PostLogin = ({ volume }) => {
       setOnlineUsers(data.onlineUsers);
     });
 
+    // Update the current time every second
+    const intervalId = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
     return () => {
       socket.off('online_users');
+      clearInterval(intervalId);
     };
   }, [history]);
 
@@ -61,7 +68,7 @@ const PostLogin = ({ volume }) => {
 
   return (
     <div className="container">
-      <h2>Welcome to the Game!</h2>
+      <h2>{currentTime.toLocaleString()}</h2>
       <p>You have successfully logged in.</p>
       {username && (
         <div style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#000000', color: '#ffffff', padding: '10px', borderRadius: '4px' }}>
