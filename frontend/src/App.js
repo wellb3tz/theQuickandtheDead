@@ -12,11 +12,12 @@ import Wasteland from './components/Wasteland';
 import Options from './components/Options';
 import SlidingMenu from './components/SlidingMenu';
 import { ChatProvider } from './contexts/ChatContext';
-import './styles/western-theme.css';
-import gunshotSound from './sounds/gunshot.mp3'; // Ensure you have this sound file
+import '../styles/western-theme.css';
+import '../styles/shootable-button.css';
+import gunshotSound from '../sounds/gunshot.mp3'; // Ensure you have this sound file
 
 const App = () => {
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(0.1); // Set default volume to 10/100
 
   useEffect(() => {
     const handleShot = (e) => {
@@ -57,13 +58,21 @@ const App = () => {
               <Route path="/login">
                 <Login volume={volume} />
               </Route>
-              <Route path="/inventory" component={Inventory} />
-              <Route path="/chat" component={Chat} />
+              <Route path="/inventory">
+                <Inventory volume={volume} />
+              </Route>
+              <Route path="/chat">
+                <Chat volume={volume} />
+              </Route>
               <Route path="/post-login">
                 <PostLogin volume={volume} />
               </Route>
-              <Route path="/wasteland-confirmation" component={WastelandConfirmation} />
-              <Route path="/wasteland" component={Wasteland} />
+              <Route path="/wasteland-confirmation">
+                <WastelandConfirmation volume={volume} />
+              </Route>
+              <Route path="/wasteland">
+                <Wasteland volume={volume} />
+              </Route>
               <Route path="/options">
                 <Options volume={volume} setVolume={setVolume} />
               </Route>

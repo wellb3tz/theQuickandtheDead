@@ -123,16 +123,23 @@ def send_message(chat_id, text):
 def handle_message(msg):
     send(msg, broadcast=True)
 
-online_users = set()
+online_users = {}
 
 @socketio.on('connect')
 def handle_connect():
-    online_users.add(request.sid)
+    user_id = request.args.get('user_id')
+    online_users[user_id] = request.sid
     emit_online_users()
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    online_users.remove(request.sid)
+    user_id = None
+    for uid, sid in online_users.items():
+        if sid == request.sid:
+            user_id = uid
+            break
+    if user_id:
+        del online_users[user_id]
     emit_online_users()
 
 def emit_online_users():

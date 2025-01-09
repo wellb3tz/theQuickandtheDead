@@ -4,7 +4,10 @@ import io from 'socket.io-client';
 import SlidingMenu from './SlidingMenu';
 import '../styles/western-theme.css';
 
-const socket = io('https://thequickandthedead.onrender.com');
+const userId = localStorage.getItem('username'); // Use a unique identifier for the user
+const socket = io('https://thequickandthedead.onrender.com', {
+  query: { user_id: userId }
+});
 
 const PostLogin = ({ volume }) => {
   const [username, setUsername] = useState('');
