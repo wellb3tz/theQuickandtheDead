@@ -23,12 +23,60 @@ const Inventory = () => {
       <h2>Inventory of {username}</h2>
       <div className="inventory-layout">
         <div className="equipped-items">
-          <div className="slot head">Head</div>
-          <div className="slot body">Body</div>
-          <div className="slot left-arm">Left Arm</div>
-          <div className="slot right-arm">Right Arm</div>
-          <div className="slot legs">Legs</div>
-          <div className="slot feet">Feet</div>
+          <div className="slot">
+            <label>Head</label>
+            <select>
+              <option value="">Select item</option>
+              {items.map((item, index) => (
+                <option key={index} value={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+          <div className="slot">
+            <label>Body</label>
+            <select>
+              <option value="">Select item</option>
+              {items.map((item, index) => (
+                <option key={index} value={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+          <div className="slot">
+            <label>Left Arm</label>
+            <select>
+              <option value="">Select item</option>
+              {items.map((item, index) => (
+                <option key={index} value={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+          <div className="slot">
+            <label>Right Arm</label>
+            <select>
+              <option value="">Select item</option>
+              {items.map((item, index) => (
+                <option key={index} value={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+          <div className="slot">
+            <label>Legs</label>
+            <select>
+              <option value="">Select item</option>
+              {items.map((item, index) => (
+                <option key={index} value={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+          <div className="slot">
+            <label>Feet</label>
+            <select>
+              <option value="">Select item</option>
+              {items.map((item, index) => (
+                <option key={index} value={item}>{item}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="all-items">
           <table>
