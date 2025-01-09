@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BackButton from './BackButton';
-import '../western-theme.css';
+import '../styles/western-theme.css';
 
 const Inventory = () => {
   const [items, setItems] = useState([]);

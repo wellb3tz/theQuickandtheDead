@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
-import '../western-theme.css';
+import '../styles/western-theme.css';
 
 const InitialScreen = () => {
   const history = useHistory();

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import BackButton from './BackButton';
 import Spinner from './Spinner';
-import '../western-theme.css';
+import '../styles/western-theme.css';
 
 const Login = ({ volume }) => {
   const [username, setUsername] = useState('');

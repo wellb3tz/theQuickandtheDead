@@ -1,6 +1,6 @@
 import React from 'react';
 import { useHistory } from 'react-router-dom';
-import '../western-theme.css';
+import '../styles/western-theme.css';
 
 const WastelandConfirmation = () => {
   const history = useHistory();

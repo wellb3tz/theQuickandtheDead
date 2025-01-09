@@ -1,6 +1,6 @@
 import React from 'react';
 import BackButton from './BackButton';
-import '../western-theme.css';
+import '../styles/western-theme.css';
 
 const Wasteland = () => {
   return (

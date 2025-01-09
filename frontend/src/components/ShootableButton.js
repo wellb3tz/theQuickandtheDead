@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../shootable-button.css';
+import '../styles/shootable-button.css';
 import gunshotSound from '/sounds/gunshot.mp3'; // Ensure you have this sound file
 
 const ShootableButton = ({ onClick, children }) => {

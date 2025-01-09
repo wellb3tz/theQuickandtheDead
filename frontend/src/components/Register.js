@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import BackButton from './BackButton';
 import Spinner from './Spinner';
-import '../western-theme.css';
+import '../styles/western-theme.css';
 
 const Register = () => {
   const [telegramId, setTelegramId] = useState('');

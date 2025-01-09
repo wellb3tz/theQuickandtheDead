@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import SlidingMenu from './SlidingMenu';
-import '../western-theme.css';
+import '../styles/western-theme.css';
 
 const PostLogin = ({ volume }) => {
   const [username, setUsername] = useState('');
