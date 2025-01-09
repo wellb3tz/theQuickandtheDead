@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import InitialScreen from './components/InitialScreen';
@@ -10,15 +10,19 @@ import PostLogin from './components/PostLogin';
 import WastelandConfirmation from './components/WastelandConfirmation';
 import Wasteland from './components/Wasteland';
 import Options from './components/Options';
+import SlidingMenu from './components/SlidingMenu';
 import { ChatProvider } from './contexts/ChatContext';
-import './western-theme.css';
-import gunshotSound from './sounds/gunshot.mp3'; // Ensure you have this sound file
+import '../styles/western-theme.css';
+import gunshotSound from '../sounds/gunshot.mp3'; // Ensure you have this sound file
 
 const App = () => {
+  const [volume, setVolume] = useState(1);
+
   useEffect(() => {
     const handleShot = (e) => {
       // Play gunshot sound
       const audio = new Audio(gunshotSound);
+      audio.volume = volume;
       audio.play();
 
       const hole = document.createElement('div');
@@ -37,23 +41,32 @@ const App = () => {
     return () => {
       document.removeEventListener('click', handleShot);
     };
-  }, []);
+  }, [volume]);
 
   return (
     <ErrorBoundary>
       <ChatProvider>
         <Router basename="/theQuickandtheDead">
           <div className="App">
+            <SlidingMenu volume={volume} setVolume={setVolume} />
             <Switch>
               <Route path="/" exact component={InitialScreen} />
-              <Route path="/register" component={Register} />
-              <Route path="/login" component={Login} />
+              <Route path="/register">
+                <Register volume={volume} />
+              </Route>
+              <Route path="/login">
+                <Login volume={volume} />
+              </Route>
               <Route path="/inventory" component={Inventory} />
               <Route path="/chat" component={Chat} />
-              <Route path="/post-login" component={PostLogin} />
+              <Route path="/post-login">
+                <PostLogin volume={volume} />
+              </Route>
               <Route path="/wasteland-confirmation" component={WastelandConfirmation} />
               <Route path="/wasteland" component={Wasteland} />
-              <Route path="/options" component={Options} />
+              <Route path="/options">
+                <Options volume={volume} setVolume={setVolume} />
+              </Route>
             </Switch>
           </div>
         </Router>

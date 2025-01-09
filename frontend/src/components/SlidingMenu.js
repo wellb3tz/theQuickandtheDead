@@ -2,7 +2,7 @@ import React from 'react';
 import { useHistory } from 'react-router-dom';
 import '../sliding-menu.css';
 
-const SlidingMenu = ({ isOpen, onClose, onLogOff, onInventory, onChat, onWasteland }) => {
+const SlidingMenu = ({ isOpen, onClose, onLogOff, onInventory, onChat, onWasteland, volume, setVolume }) => {
   const history = useHistory();
 
   const handleOptions = () => {

@@ -4,7 +4,7 @@ import BackButton from './BackButton';
 import Spinner from './Spinner';
 import '../western-theme.css';
 
-const Login = () => {
+const Login = ({ volume }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');

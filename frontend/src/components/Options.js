@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import BackButton from './BackButton';
 import '../western-theme.css';
 
-const Options = () => {
-  const [volume, setVolume] = useState(50);
-
+const Options = ({ volume, setVolume }) => {
   const handleVolumeChange = (e) => {
-    setVolume(e.target.value);
+    setVolume(e.target.value / 100); // Convert to a value between 0 and 1
   };
 
   return (
@@ -19,10 +17,10 @@ const Options = () => {
           type="range" 
           min="0" 
           max="100" 
-          value={volume}
+          value={volume * 100} // Convert to a value between 0 and 100
           onChange={handleVolumeChange}
         />
-        <span>{volume}</span>
+        <span>{Math.round(volume * 100)}</span>
       </div>
     </div>
   );
