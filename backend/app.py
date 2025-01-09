@@ -8,7 +8,7 @@ import hashlib
 import hmac
 import time
 from dotenv import load_dotenv
-from flask_socketio import SocketIO, send
+from flask_socketio import SocketIO, send, emit
 from routes.inventory import inventory_bp
 from flask_cors import CORS
 
@@ -122,6 +122,25 @@ def send_message(chat_id, text):
 @socketio.on('message')
 def handle_message(msg):
     send(msg, broadcast=True)
+
+online_users = set()
+
+@socketio.on('connect')
+def handle_connect():
+    online_users.add(request.sid)
+    emit_online_users()
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    online_users.remove(request.sid)
+    emit_online_users()
+
+def emit_online_users():
+    emit('online_users', {'onlineUsers': len(online_users)}, broadcast=True)
+
+@app.route('/online-users', methods=['GET'])
+def get_online_users():
+    return jsonify({"onlineUsers": len(online_users)})
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000)

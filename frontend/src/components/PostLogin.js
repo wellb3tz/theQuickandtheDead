@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import io from 'socket.io-client';
 import SlidingMenu from './SlidingMenu';
 import '../styles/western-theme.css';
+
+const socket = io('https://thequickandthedead.onrender.com');
 
 const PostLogin = ({ volume }) => {
   const [username, setUsername] = useState('');
@@ -17,18 +20,22 @@ const PostLogin = ({ volume }) => {
       history.push('/login');
     }
 
+    // Fetch the number of online users initially
     fetch('https://thequickandthedead.onrender.com/online-users')
-      .then(response => response.text())
-      .then(text => {
-        try {
-          const data = JSON.parse(text);
-          setOnlineUsers(data.onlineUsers);
-        } catch (error) {
-          console.error('Error parsing JSON:', error);
-          console.error('Response text:', text);
-        }
+      .then(response => response.json())
+      .then(data => {
+        setOnlineUsers(data.onlineUsers);
       })
       .catch(error => console.error('Error fetching online users:', error));
+
+    // Listen for online users updates
+    socket.on('online_users', (data) => {
+      setOnlineUsers(data.onlineUsers);
+    });
+
+    return () => {
+      socket.off('online_users');
+    };
   }, [history]);
 
   const handleLogOff = () => {
