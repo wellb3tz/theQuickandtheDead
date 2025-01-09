@@ -12,9 +12,9 @@ import Wasteland from './components/Wasteland';
 import Options from './components/Options';
 import SlidingMenu from './components/SlidingMenu';
 import { ChatProvider } from './contexts/ChatContext';
-import '../styles/western-theme.css';
-import '../styles/shootable-button.css';
-import gunshotSound from '../sounds/gunshot.mp3'; // Ensure you have this sound file
+import './styles/western-theme.css';
+import './styles/shootable-button.css';
+import gunshotSound from './sounds/gunshot.mp3'; // Ensure you have this sound file
 
 const App = () => {
   const [volume, setVolume] = useState(0.1); // Set default volume to 10/100
