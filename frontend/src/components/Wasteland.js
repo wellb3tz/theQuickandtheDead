@@ -1,7 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import BackButton from './BackButton';
 import '../styles/western-theme.css';
 
 const Wasteland = () => {
@@ -14,18 +12,17 @@ const Wasteland = () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     mountRef.current.appendChild(renderer.domElement);
 
-    const loader = new GLTFLoader();
     const bandits = [];
 
-    // Load bandit model
-    loader.load('/path/to/bandit/model.glb', (gltf) => {
-      for (let i = 0; i < 5; i++) {
-        const bandit = gltf.scene.clone();
-        bandit.position.set(Math.random() * 10 - 5, 0, Math.random() * 10 - 5);
-        scene.add(bandit);
-        bandits.push(bandit);
-      }
-    });
+    // Create placeholder bandit models (cubes)
+    for (let i = 0; i < 5; i++) {
+      const geometry = new THREE.BoxGeometry();
+      const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const bandit = new THREE.Mesh(geometry, material);
+      bandit.position.set(Math.random() * 10 - 5, 0, Math.random() * 10 - 5);
+      scene.add(bandit);
+      bandits.push(bandit);
+    }
 
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(5, 5, 5).normalize();
@@ -64,13 +61,7 @@ const Wasteland = () => {
     };
   }, []);
 
-  return (
-    <div className="container">
-      <BackButton />
-      <h2>It all can end here.</h2>
-      <div ref={mountRef} className="wasteland-container"></div>
-    </div>
-  );
+  return <div ref={mountRef} className="wasteland-container"></div>;
 };
 
 export default Wasteland;
