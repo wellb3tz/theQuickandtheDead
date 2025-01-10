@@ -93,3 +93,9 @@ input[type="range"] {
   background: black;
   pointer-events: none;
 }
+
+.wasteland-container {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
