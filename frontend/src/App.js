@@ -14,7 +14,6 @@ import SlidingMenu from './components/SlidingMenu';
 import { ChatProvider } from './contexts/ChatContext';
 import './styles/western-theme.css';
 import './styles/shootable-button.css';
-import './styles/app.css';
 import gunshotSound from './sounds/gunshot.mp3'; // Ensure you have this sound file
 
 const App = () => {
