@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import '../styles/western-theme.css';
 
 const Wasteland = () => {
@@ -11,6 +12,11 @@ const Wasteland = () => {
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     mountRef.current.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; // Enable damping (inertia)
+    controls.dampingFactor = 0.25; // Damping factor
+    controls.screenSpacePanning = false; // Disable panning
 
     const bandits = [];
 
@@ -50,6 +56,7 @@ const Wasteland = () => {
 
     const animate = () => {
       requestAnimationFrame(animate);
+      controls.update(); // Update controls
       renderer.render(scene, camera);
     };
 
