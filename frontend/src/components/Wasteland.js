@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import * as CANNON from 'cannon';
 import '../styles/western-theme.css';
 
 const Wasteland = () => {
@@ -20,7 +21,18 @@ const Wasteland = () => {
     controls.enableZoom = true; // Enable zooming
     controls.enablePan = true; // Enable panning
 
+    const world = new CANNON.World();
+    world.gravity.set(0, -9.82, 0); // Set gravity
+
+    const groundBody = new CANNON.Body({
+      mass: 0, // Mass of 0 makes the body static
+      shape: new CANNON.Plane(),
+    });
+    groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    world.addBody(groundBody);
+
     const bandits = [];
+    const banditBodies = [];
 
     // Create placeholder bandit models (cubes)
     for (let i = 0; i < 5; i++) {
@@ -30,6 +42,14 @@ const Wasteland = () => {
       bandit.position.set(Math.random() * 10 - 5, 0, Math.random() * 10 - 5);
       scene.add(bandit);
       bandits.push(bandit);
+
+      const banditBody = new CANNON.Body({
+        mass: 1, // Mass of 1 makes the body dynamic
+        shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)),
+        position: new CANNON.Vec3(bandit.position.x, bandit.position.y, bandit.position.z),
+      });
+      world.addBody(banditBody);
+      banditBodies.push(banditBody);
     }
 
     const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -50,7 +70,11 @@ const Wasteland = () => {
 
       if (intersects.length > 0) {
         const bandit = intersects[0].object;
-        scene.remove(bandit);
+        const index = bandits.indexOf(bandit);
+        if (index !== -1) {
+          const banditBody = banditBodies[index];
+          banditBody.applyImpulse(new CANNON.Vec3(0, 5, 0), banditBody.position);
+        }
       }
     };
 
@@ -58,6 +82,15 @@ const Wasteland = () => {
 
     const animate = () => {
       requestAnimationFrame(animate);
+
+      world.step(1 / 60);
+
+      bandits.forEach((bandit, index) => {
+        const banditBody = banditBodies[index];
+        bandit.position.copy(banditBody.position);
+        bandit.quaternion.copy(banditBody.quaternion);
+      });
+
       controls.update(); // Update controls
       renderer.render(scene, camera);
     };
