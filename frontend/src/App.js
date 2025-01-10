@@ -11,9 +11,11 @@ import WastelandConfirmation from './components/WastelandConfirmation';
 import Wasteland from './components/Wasteland';
 import Options from './components/Options';
 import SlidingMenu from './components/SlidingMenu';
+import AnimatedButton from './components/AnimatedButton';
 import { ChatProvider } from './contexts/ChatContext';
 import './styles/western-theme.css';
 import './styles/shootable-button.css';
+import './styles/app.css';
 import gunshotSound from './sounds/gunshot.mp3'; // Ensure you have this sound file
 
 const App = () => {
@@ -50,6 +52,10 @@ const App = () => {
         <Router basename="/theQuickandtheDead">
           <div className="App">
             <SlidingMenu volume={volume} setVolume={setVolume} />
+            <div className="app-container">
+              <h1>Welcome to the Animation Example</h1>
+              <AnimatedButton />
+            </div>
             <Switch>
               <Route path="/" exact component={InitialScreen} />
               <Route path="/register">
