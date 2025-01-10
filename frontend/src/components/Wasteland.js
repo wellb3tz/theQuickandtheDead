@@ -17,6 +17,8 @@ const Wasteland = () => {
     controls.enableDamping = true; // Enable damping (inertia)
     controls.dampingFactor = 0.25; // Damping factor
     controls.screenSpacePanning = false; // Disable panning
+    controls.enableZoom = true; // Enable zooming
+    controls.enablePan = true; // Enable panning
 
     const bandits = [];
 
