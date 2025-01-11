@@ -47,6 +47,13 @@ const Wasteland = () => {
     floorMesh.receiveShadow = true; // Enable shadows for the floor
     scene.add(floorMesh);
 
+    // Load skybox
+    const skyboxTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/skybox_desert1.png', () => {
+      const rt = new THREE.WebGLCubeRenderTarget(skyboxTexture.image.height);
+      rt.fromEquirectangularTexture(renderer, skyboxTexture);
+      scene.background = rt.texture;
+    });
+
     const loader = new GLTFLoader();
     const bandits = [];
     const banditBodies = [];
@@ -110,7 +117,8 @@ const Wasteland = () => {
         const index = hitboxes.indexOf(hitbox);
         if (index !== -1) {
           const banditBody = banditBodies[index];
-          banditBody.applyImpulse(new CANNON.Vec3(0, 5, 0), banditBody.position);
+          const force = new CANNON.Vec3(mouse.x * 10, 5, mouse.y * 10); // Apply force based on mouse position
+          banditBody.applyImpulse(force, banditBody.position);
         }
       }
     };
