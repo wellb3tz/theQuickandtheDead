@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
@@ -25,6 +26,8 @@ const hitSounds = [
 const Wasteland = ({ volume }) => {
   const mountRef = useRef(null);
   const cameraRef = useRef(null);
+  const [remainingBandits, setRemainingBandits] = useState(5);
+  const history = useHistory();
 
   useEffect(() => {
     const scene = new THREE.Scene();
@@ -145,47 +148,17 @@ const Wasteland = ({ volume }) => {
           hitAudio.volume = volume; // Set volume
           hitAudio.play();
 
-          // Create particle effect
-          createParticleEffect(intersects[0].point);
+          // Remove hitbox and bandit from the scene
+          scene.remove(hitbox);
+          scene.remove(bandits[index]);
+          hitboxes.splice(index, 1);
+          bandits.splice(index, 1);
+          banditBodies.splice(index, 1);
 
-          // Apply camera shake
-          applyCameraShake();
+          // Update remaining bandits count
+          setRemainingBandits(remainingBandits - 1);
         }
       }
-    };
-
-    const createParticleEffect = (position) => {
-      const particles = [];
-      const particleCount = 20;
-      const particleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
-      const particleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-
-      for (let i = 0; i < particleCount; i++) {
-        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
-        particle.position.copy(position);
-        particle.velocity = new THREE.Vector3(
-          (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 2
-        );
-        scene.add(particle);
-        particles.push(particle);
-      }
-
-      const animateParticles = () => {
-        particles.forEach((particle) => {
-          particle.position.add(particle.velocity);
-          particle.velocity.multiplyScalar(0.95); // Dampen velocity
-        });
-
-        setTimeout(() => {
-          particles.forEach((particle) => {
-            scene.remove(particle);
-          });
-        }, 500);
-      };
-
-      animateParticles();
     };
 
     const applyCameraShake = () => {
@@ -239,9 +212,21 @@ const Wasteland = ({ volume }) => {
       window.removeEventListener('click', onMouseClick);
       mountRef.current.removeChild(renderer.domElement);
     };
-  }, [volume]);
+  }, [volume, remainingBandits]);
 
-  return <div ref={mountRef} className="wasteland-container"></div>;
+  const handleLeaveArea = () => {
+    history.push('/looting');
+  };
+
+  return (
+    <div ref={mountRef} className="wasteland-container">
+      {remainingBandits === 0 && (
+        <button onClick={handleLeaveArea} className="leave-area-button">
+          Leave area
+        </button>
+      )}
+    </div>
+  );
 };
 
 export default Wasteland;
