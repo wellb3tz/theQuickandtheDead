@@ -21,7 +21,7 @@ const InitialScreen = () => {
 
   return (
     <div className="container">
-      <h1>Welcome to the Game</h1>
+      <h1>The Quick and the Dead</h1>
       <button onClick={handleRegister}>Register</button>
       <button onClick={handleLogin}>Login</button>
     </div>
