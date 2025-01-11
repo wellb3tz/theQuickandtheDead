@@ -31,6 +31,19 @@ const Wasteland = () => {
     groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
     world.addBody(groundBody);
 
+    // Load floor texture
+    const textureLoader = new THREE.TextureLoader();
+    const floorTexture = textureLoader.load('https://i.imgur.com/hfEVi0s.png');
+    floorTexture.wrapS = THREE.RepeatWrapping;
+    floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(10, 10);
+
+    const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture });
+    const floorGeometry = new THREE.PlaneGeometry(100, 100);
+    const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+    floorMesh.rotation.x = -Math.PI / 2;
+    scene.add(floorMesh);
+
     const bandits = [];
     const banditBodies = [];
 
