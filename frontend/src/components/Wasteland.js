@@ -17,6 +17,7 @@ import hitSound9 from '../sounds/hit9.mp3';
 import hitSound10 from '../sounds/hit10.mp3';
 import hitSound11 from '../sounds/hit11.mp3';
 import hitSound12 from '../sounds/hit12.mp3';
+import skullIcon from '../images/skull.png'; // Import the skull icon image
 
 const hitSounds = [
   hitSound1, hitSound2, hitSound3, hitSound4, hitSound5, hitSound6,
@@ -30,6 +31,7 @@ const Wasteland = ({ volume }) => {
   const banditsRef = useRef([]);
   const banditBodiesRef = useRef([]);
   const hitboxesRef = useRef([]);
+  const skullIconsRef = useRef([]);
   const history = useHistory();
 
   useEffect(() => {
@@ -148,6 +150,11 @@ const Wasteland = ({ volume }) => {
           hitAudio.volume = volume; // Set volume
           hitAudio.play();
 
+          // Display skull icon above the bandit
+          const skullIconSprite = createSkullIcon(intersects[0].point);
+          scene.add(skullIconSprite);
+          skullIconsRef.current.push(skullIconSprite);
+
           // Remove hitbox and bandit from the scene
           scene.remove(hitbox);
           scene.remove(banditsRef.current[index]);
@@ -159,6 +166,15 @@ const Wasteland = ({ volume }) => {
           setRemainingBandits((prevCount) => prevCount - 1);
         }
       }
+    };
+
+    const createSkullIcon = (position) => {
+      const spriteMap = new THREE.TextureLoader().load(skullIcon);
+      const spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.position.set(position.x, position.y + 2, position.z); // Position above the bandit
+      sprite.scale.set(0.5, 0.5, 0.5); // Adjust the size of the skull icon
+      return sprite;
     };
 
     const applyCameraShake = () => {
