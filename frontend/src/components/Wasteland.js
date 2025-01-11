@@ -4,6 +4,23 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import * as CANNON from 'cannon';
 import '../styles/western-theme.css';
+import hitSound1 from '../sounds/hit1.mp3';
+import hitSound2 from '../sounds/hit2.mp3';
+import hitSound3 from '../sounds/hit3.mp3';
+import hitSound4 from '../sounds/hit4.mp3';
+import hitSound5 from '../sounds/hit5.mp3';
+import hitSound6 from '../sounds/hit6.mp3';
+import hitSound7 from '../sounds/hit7.mp3';
+import hitSound8 from '../sounds/hit8.mp3';
+import hitSound9 from '../sounds/hit9.mp3';
+import hitSound10 from '../sounds/hit10.mp3';
+import hitSound11 from '../sounds/hit11.mp3';
+import hitSound12 from '../sounds/hit12.mp3';
+
+const hitSounds = [
+  hitSound1, hitSound2, hitSound3, hitSound4, hitSound5, hitSound6,
+  hitSound7, hitSound8, hitSound9, hitSound10, hitSound11, hitSound12
+];
 
 const Wasteland = () => {
   const mountRef = useRef(null);
@@ -119,8 +136,50 @@ const Wasteland = () => {
           const banditBody = banditBodies[index];
           const force = new CANNON.Vec3(mouse.x * 10, 5, mouse.y * 10); // Apply force based on mouse position
           banditBody.applyImpulse(force, banditBody.position);
+
+          // Play random hit sound
+          const randomHitSound = hitSounds[Math.floor(Math.random() * hitSounds.length)];
+          const hitAudio = new Audio(randomHitSound);
+          hitAudio.play();
+
+          // Create particle effect
+          createParticleEffect(banditBody.position);
         }
       }
+    };
+
+    const createParticleEffect = (position) => {
+      const particles = [];
+      const particleCount = 20;
+      const particleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+      const particleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
+      for (let i = 0; i < particleCount; i++) {
+        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+        particle.position.copy(position);
+        particle.velocity = new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2
+        );
+        scene.add(particle);
+        particles.push(particle);
+      }
+
+      const animateParticles = () => {
+        particles.forEach((particle) => {
+          particle.position.add(particle.velocity);
+          particle.velocity.multiplyScalar(0.95); // Dampen velocity
+        });
+
+        setTimeout(() => {
+          particles.forEach((particle) => {
+            scene.remove(particle);
+          });
+        }, 500);
+      };
+
+      animateParticles();
     };
 
     window.addEventListener('click', onMouseClick);
