@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/theQuickandtheDead/static/css/main.fd9d03e2.css",
-    "main.js": "/theQuickandtheDead/static/js/main.f76dfefb.js",
+    "main.js": "/theQuickandtheDead/static/js/main.e813e370.js",
     "static/media/soil1.png": "/theQuickandtheDead/static/media/soil1.a4578a8e36a78aa7bc6a.png",
     "static/media/bandit1.glb": "/theQuickandtheDead/static/media/bandit1.e0874caf12556e5ae90e.glb",
     "static/media/skybox_desert1.png": "/theQuickandtheDead/static/media/skybox_desert1.172bf95157264456b497.png",
@@ -21,10 +21,10 @@
     "static/media/hit5.mp3": "/theQuickandtheDead/static/media/hit5.ab6e737ccab7cadd6628.mp3",
     "index.html": "/theQuickandtheDead/index.html",
     "main.fd9d03e2.css.map": "/theQuickandtheDead/static/css/main.fd9d03e2.css.map",
-    "main.f76dfefb.js.map": "/theQuickandtheDead/static/js/main.f76dfefb.js.map"
+    "main.e813e370.js.map": "/theQuickandtheDead/static/js/main.e813e370.js.map"
   },
   "entrypoints": [
     "static/css/main.fd9d03e2.css",
-    "static/js/main.f76dfefb.js"
+    "static/js/main.e813e370.js"
   ]
 }
