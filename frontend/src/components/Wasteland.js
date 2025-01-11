@@ -75,7 +75,7 @@ const Wasteland = ({ volume }) => {
     scene.add(floorMesh);
 
     // Load skybox
-    const skyboxTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/skybox_desert1.png', () => {
+    const skyboxTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/skybox_panorama.jpg', () => {
       const rt = new THREE.WebGLCubeRenderTarget(skyboxTexture.image.height);
       rt.fromEquirectangularTexture(renderer, skyboxTexture);
       scene.background = rt.texture;
@@ -154,13 +154,6 @@ const Wasteland = ({ volume }) => {
           const skullIconSprite = createSkullIcon(intersects[0].point);
           scene.add(skullIconSprite);
           skullIconsRef.current.push(skullIconSprite);
-
-          // Remove hitbox and bandit from the scene
-          scene.remove(hitbox);
-          scene.remove(banditsRef.current[index]);
-          hitboxesRef.current.splice(index, 1);
-          banditsRef.current.splice(index, 1);
-          banditBodiesRef.current.splice(index, 1);
 
           // Update remaining bandits count
           setRemainingBandits((prevCount) => prevCount - 1);
