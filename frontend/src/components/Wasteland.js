@@ -38,10 +38,10 @@ const Wasteland = () => {
     const floorTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/soil4k.png');
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set(1, 1); // Scale the texture to cover the floor
+    floorTexture.repeat.set(1, 1); // Use the texture without scaling
 
     const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture });
-    const floorGeometry = new THREE.PlaneGeometry(100, 100);
+    const floorGeometry = new THREE.PlaneGeometry(10, 10); // Smaller floor area
     const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.receiveShadow = true; // Enable shadows for the floor
