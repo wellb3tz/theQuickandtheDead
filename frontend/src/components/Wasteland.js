@@ -32,6 +32,7 @@ const Wasteland = ({ volume }) => {
   const banditBodiesRef = useRef([]);
   const hitboxesRef = useRef([]);
   const skullIconsRef = useRef([]);
+  const hitBanditsRef = useRef(new Set());
   const history = useHistory();
 
   useEffect(() => {
@@ -75,7 +76,7 @@ const Wasteland = ({ volume }) => {
     scene.add(floorMesh);
 
     // Load skybox
-    const skyboxTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/skybox_panorama.jpg', () => {
+    const skyboxTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/skybox_desert1.png', () => {
       const rt = new THREE.WebGLCubeRenderTarget(skyboxTexture.image.height);
       rt.fromEquirectangularTexture(renderer, skyboxTexture);
       scene.background = rt.texture;
@@ -150,13 +151,16 @@ const Wasteland = ({ volume }) => {
           hitAudio.volume = volume; // Set volume
           hitAudio.play();
 
-          // Display skull icon above the bandit
-          const skullIconSprite = createSkullIcon(intersects[0].point);
-          scene.add(skullIconSprite);
-          skullIconsRef.current.push(skullIconSprite);
+          // Display skull icon above the bandit if it's the first hit
+          if (!hitBanditsRef.current.has(index)) {
+            const skullIconSprite = createSkullIcon(banditBody.position);
+            scene.add(skullIconSprite);
+            skullIconsRef.current.push({ sprite: skullIconSprite, banditIndex: index });
+            hitBanditsRef.current.add(index);
 
-          // Update remaining bandits count
-          setRemainingBandits((prevCount) => prevCount - 1);
+            // Update remaining bandits count
+            setRemainingBandits((prevCount) => prevCount - 1);
+          }
         }
       }
     };
@@ -204,6 +208,12 @@ const Wasteland = ({ volume }) => {
         const hitbox = hitboxesRef.current[index];
         hitbox.position.copy(bandit.position);
         hitbox.quaternion.copy(bandit.quaternion);
+      });
+
+      // Update skull icon positions
+      skullIconsRef.current.forEach(({ sprite, banditIndex }) => {
+        const banditBody = banditBodiesRef.current[banditIndex];
+        sprite.position.set(banditBody.position.x, banditBody.position.y + 2, banditBody.position.z);
       });
 
       // Prevent camera from going underground
