@@ -27,6 +27,9 @@ const Wasteland = ({ volume }) => {
   const mountRef = useRef(null);
   const cameraRef = useRef(null);
   const [remainingBandits, setRemainingBandits] = useState(5);
+  const banditsRef = useRef([]);
+  const banditBodiesRef = useRef([]);
+  const hitboxesRef = useRef([]);
   const history = useHistory();
 
   useEffect(() => {
@@ -77,9 +80,6 @@ const Wasteland = ({ volume }) => {
     });
 
     const loader = new GLTFLoader();
-    const bandits = [];
-    const banditBodies = [];
-    const hitboxes = [];
 
     // Load bandit model
     loader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/bandit1.glb', (gltf) => {
@@ -92,7 +92,7 @@ const Wasteland = ({ volume }) => {
           }
         });
         scene.add(bandit);
-        bandits.push(bandit);
+        banditsRef.current.push(bandit);
 
         const banditBody = new CANNON.Body({
           mass: 1, // Mass of 1 makes the body dynamic
@@ -100,7 +100,7 @@ const Wasteland = ({ volume }) => {
           position: new CANNON.Vec3(bandit.position.x, bandit.position.y + 1, bandit.position.z), // Ensure the bandit stands on the ground
         });
         world.addBody(banditBody);
-        banditBodies.push(banditBody);
+        banditBodiesRef.current.push(banditBody);
 
         // Create hitbox
         const hitboxGeometry = new THREE.BoxGeometry(1, 2, 1); // Adjust the size to match the bandit model
@@ -108,7 +108,7 @@ const Wasteland = ({ volume }) => {
         const hitbox = new THREE.Mesh(hitboxGeometry, hitboxMaterial);
         hitbox.position.copy(bandit.position);
         scene.add(hitbox);
-        hitboxes.push(hitbox);
+        hitboxesRef.current.push(hitbox);
       }
     });
 
@@ -132,13 +132,13 @@ const Wasteland = ({ volume }) => {
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(hitboxes);
+      const intersects = raycaster.intersectObjects(hitboxesRef.current);
 
       if (intersects.length > 0) {
         const hitbox = intersects[0].object;
-        const index = hitboxes.indexOf(hitbox);
+        const index = hitboxesRef.current.indexOf(hitbox);
         if (index !== -1) {
-          const banditBody = banditBodies[index];
+          const banditBody = banditBodiesRef.current[index];
           const force = new CANNON.Vec3(mouse.x * 10, 5, mouse.y * 10); // Apply force based on mouse position
           banditBody.applyImpulse(force, banditBody.position);
 
@@ -150,13 +150,13 @@ const Wasteland = ({ volume }) => {
 
           // Remove hitbox and bandit from the scene
           scene.remove(hitbox);
-          scene.remove(bandits[index]);
-          hitboxes.splice(index, 1);
-          bandits.splice(index, 1);
-          banditBodies.splice(index, 1);
+          scene.remove(banditsRef.current[index]);
+          hitboxesRef.current.splice(index, 1);
+          banditsRef.current.splice(index, 1);
+          banditBodiesRef.current.splice(index, 1);
 
           // Update remaining bandits count
-          setRemainingBandits(remainingBandits - 1);
+          setRemainingBandits((prevCount) => prevCount - 1);
         }
       }
     };
@@ -187,12 +187,12 @@ const Wasteland = ({ volume }) => {
 
       world.step(1 / 60);
 
-      bandits.forEach((bandit, index) => {
-        const banditBody = banditBodies[index];
+      banditsRef.current.forEach((bandit, index) => {
+        const banditBody = banditBodiesRef.current[index];
         bandit.position.copy(banditBody.position);
         bandit.quaternion.copy(banditBody.quaternion);
 
-        const hitbox = hitboxes[index];
+        const hitbox = hitboxesRef.current[index];
         hitbox.position.copy(bandit.position);
         hitbox.quaternion.copy(bandit.quaternion);
       });
@@ -212,7 +212,7 @@ const Wasteland = ({ volume }) => {
       window.removeEventListener('click', onMouseClick);
       mountRef.current.removeChild(renderer.domElement);
     };
-  }, [volume, remainingBandits]);
+  }, [volume]);
 
   const handleLeaveArea = () => {
     history.push('/looting');

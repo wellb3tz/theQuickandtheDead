@@ -10,6 +10,7 @@ import PostLogin from './components/PostLogin';
 import WastelandConfirmation from './components/WastelandConfirmation';
 import Wasteland from './components/Wasteland';
 import Options from './components/Options';
+import Looting from './components/Looting';
 import SlidingMenu from './components/SlidingMenu';
 import { ChatProvider } from './contexts/ChatContext';
 import './styles/western-theme.css';
@@ -75,6 +76,9 @@ const App = () => {
               </Route>
               <Route path="/options">
                 <Options volume={volume} setVolume={setVolume} />
+              </Route>
+              <Route path="/looting">
+                <Looting />
               </Route>
             </Switch>
           </div>
