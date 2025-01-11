@@ -37,7 +37,7 @@ const Wasteland = () => {
     const floorTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/soil4k.png');
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set(10, 10);
+    floorTexture.repeat.set(4, 4); // Scale the texture to cover the floor
 
     const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture });
     const floorGeometry = new THREE.PlaneGeometry(100, 100);
@@ -48,6 +48,7 @@ const Wasteland = () => {
     const loader = new GLTFLoader();
     const bandits = [];
     const banditBodies = [];
+    const hitboxes = [];
 
     // Load bandit model
     loader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/bandit1.glb', (gltf) => {
@@ -59,11 +60,19 @@ const Wasteland = () => {
 
         const banditBody = new CANNON.Body({
           mass: 1, // Mass of 1 makes the body dynamic
-          shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)),
-          position: new CANNON.Vec3(bandit.position.x, bandit.position.y, bandit.position.z),
+          shape: new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5)), // Adjust the shape to match the bandit model
+          position: new CANNON.Vec3(bandit.position.x, bandit.position.y + 1, bandit.position.z), // Ensure the bandit stands on the ground
         });
         world.addBody(banditBody);
         banditBodies.push(banditBody);
+
+        // Create hitbox
+        const hitboxGeometry = new THREE.BoxGeometry(1, 2, 1); // Adjust the size to match the bandit model
+        const hitboxMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, visible: false }); // Invisible hitbox
+        const hitbox = new THREE.Mesh(hitboxGeometry, hitboxMaterial);
+        hitbox.position.copy(bandit.position);
+        scene.add(hitbox);
+        hitboxes.push(hitbox);
       }
     });
 
@@ -81,11 +90,11 @@ const Wasteland = () => {
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(bandits);
+      const intersects = raycaster.intersectObjects(hitboxes);
 
       if (intersects.length > 0) {
-        const bandit = intersects[0].object;
-        const index = bandits.indexOf(bandit);
+        const hitbox = intersects[0].object;
+        const index = hitboxes.indexOf(hitbox);
         if (index !== -1) {
           const banditBody = banditBodies[index];
           banditBody.applyImpulse(new CANNON.Vec3(0, 5, 0), banditBody.position);
@@ -104,6 +113,10 @@ const Wasteland = () => {
         const banditBody = banditBodies[index];
         bandit.position.copy(banditBody.position);
         bandit.quaternion.copy(banditBody.quaternion);
+
+        const hitbox = hitboxes[index];
+        hitbox.position.copy(bandit.position);
+        hitbox.quaternion.copy(bandit.quaternion);
       });
 
       // Prevent camera from going underground
