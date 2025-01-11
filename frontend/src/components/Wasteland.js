@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import * as CANNON from 'cannon';
 import '../styles/western-theme.css';
 
@@ -33,7 +34,7 @@ const Wasteland = () => {
 
     // Load floor texture
     const textureLoader = new THREE.TextureLoader();
-    const floorTexture = textureLoader.load('https://i.imgur.com/hfEVi0s.png');
+    const floorTexture = textureLoader.load('https://example.com/path/to/your/floor-texture.jpg');
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set(10, 10);
@@ -44,26 +45,27 @@ const Wasteland = () => {
     floorMesh.rotation.x = -Math.PI / 2;
     scene.add(floorMesh);
 
+    const loader = new GLTFLoader();
     const bandits = [];
     const banditBodies = [];
 
-    // Create placeholder bandit models (cubes)
-    for (let i = 0; i < 5; i++) {
-      const geometry = new THREE.BoxGeometry();
-      const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-      const bandit = new THREE.Mesh(geometry, material);
-      bandit.position.set(Math.random() * 10 - 5, 0, Math.random() * 10 - 5);
-      scene.add(bandit);
-      bandits.push(bandit);
+    // Load bandit model
+    loader.load('https://example.com/path/to/your/bandit-model.glb', (gltf) => {
+      for (let i = 0; i < 5; i++) {
+        const bandit = gltf.scene.clone();
+        bandit.position.set(Math.random() * 10 - 5, 0, Math.random() * 10 - 5);
+        scene.add(bandit);
+        bandits.push(bandit);
 
-      const banditBody = new CANNON.Body({
-        mass: 1, // Mass of 1 makes the body dynamic
-        shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)),
-        position: new CANNON.Vec3(bandit.position.x, bandit.position.y, bandit.position.z),
-      });
-      world.addBody(banditBody);
-      banditBodies.push(banditBody);
-    }
+        const banditBody = new CANNON.Body({
+          mass: 1, // Mass of 1 makes the body dynamic
+          shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)),
+          position: new CANNON.Vec3(bandit.position.x, bandit.position.y, bandit.position.z),
+        });
+        world.addBody(banditBody);
+        banditBodies.push(banditBody);
+      }
+    });
 
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(5, 5, 5).normalize();
@@ -103,6 +105,11 @@ const Wasteland = () => {
         bandit.position.copy(banditBody.position);
         bandit.quaternion.copy(banditBody.quaternion);
       });
+
+      // Prevent camera from going underground
+      if (camera.position.y < 1) {
+        camera.position.y = 1;
+      }
 
       controls.update(); // Update controls
       renderer.render(scene, camera);
