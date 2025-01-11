@@ -1,14 +1,26 @@
 {
   "files": {
     "main.css": "/theQuickandtheDead/static/css/main.76a35b14.css",
-    "main.js": "/theQuickandtheDead/static/js/main.4ac7e692.js",
+    "main.js": "/theQuickandtheDead/static/js/main.4cf8b4da.js",
+    "static/media/hit10.mp3": "/theQuickandtheDead/static/media/hit10.d3e7ecd14a208e36de0c.mp3",
+    "static/media/hit12.mp3": "/theQuickandtheDead/static/media/hit12.37b834100510c091391c.mp3",
+    "static/media/hit11.mp3": "/theQuickandtheDead/static/media/hit11.6922fbc755e503293781.mp3",
     "static/media/gunshot.mp3": "/theQuickandtheDead/static/media/gunshot.4c7cec061ec447e29435.mp3",
+    "static/media/hit9.mp3": "/theQuickandtheDead/static/media/hit9.356a7983cb3b2947eeb5.mp3",
+    "static/media/hit6.mp3": "/theQuickandtheDead/static/media/hit6.1ff65a25fd9065d10867.mp3",
+    "static/media/hit1.mp3": "/theQuickandtheDead/static/media/hit1.9667077acd79d7773b1e.mp3",
+    "static/media/hit3.mp3": "/theQuickandtheDead/static/media/hit3.76b7ca8799ce07d79e12.mp3",
+    "static/media/hit2.mp3": "/theQuickandtheDead/static/media/hit2.0808d52d2ffcbe1f6958.mp3",
+    "static/media/hit7.mp3": "/theQuickandtheDead/static/media/hit7.1fe934e53bb2f65528ef.mp3",
+    "static/media/hit4.mp3": "/theQuickandtheDead/static/media/hit4.ad6de644fc9b5fb3e383.mp3",
+    "static/media/hit8.mp3": "/theQuickandtheDead/static/media/hit8.6649924cabe6838c306f.mp3",
+    "static/media/hit5.mp3": "/theQuickandtheDead/static/media/hit5.ab6e737ccab7cadd6628.mp3",
     "index.html": "/theQuickandtheDead/index.html",
     "main.76a35b14.css.map": "/theQuickandtheDead/static/css/main.76a35b14.css.map",
-    "main.4ac7e692.js.map": "/theQuickandtheDead/static/js/main.4ac7e692.js.map"
+    "main.4cf8b4da.js.map": "/theQuickandtheDead/static/js/main.4cf8b4da.js.map"
   },
   "entrypoints": [
     "static/css/main.76a35b14.css",
-    "static/js/main.4ac7e692.js"
+    "static/js/main.4cf8b4da.js"
   ]
 }
