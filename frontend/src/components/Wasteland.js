@@ -34,7 +34,7 @@ const Wasteland = () => {
 
     // Load floor texture
     const textureLoader = new THREE.TextureLoader();
-    const floorTexture = textureLoader.load('https://example.com/path/to/your/floor-texture.jpg');
+    const floorTexture = textureLoader.load('https://github.com/wellb3tz/theQuickandtheDead/blob/6c8af1b2d8c37bc7d98bfa6fbc6978e756932a73/frontend/media/soil4k.png');
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set(10, 10);
@@ -50,7 +50,7 @@ const Wasteland = () => {
     const banditBodies = [];
 
     // Load bandit model
-    loader.load('https://example.com/path/to/your/bandit-model.glb', (gltf) => {
+    loader.load('https://github.com/wellb3tz/theQuickandtheDead/blob/6c8af1b2d8c37bc7d98bfa6fbc6978e756932a73/frontend/media/bandit1.glb', (gltf) => {
       for (let i = 0; i < 5; i++) {
         const bandit = gltf.scene.clone();
         bandit.position.set(Math.random() * 10 - 5, 0, Math.random() * 10 - 5);
