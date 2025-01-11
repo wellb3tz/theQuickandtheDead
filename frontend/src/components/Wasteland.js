@@ -22,12 +22,14 @@ const hitSounds = [
   hitSound7, hitSound8, hitSound9, hitSound10, hitSound11, hitSound12
 ];
 
-const Wasteland = () => {
+const Wasteland = ({ volume }) => {
   const mountRef = useRef(null);
+  const cameraRef = useRef(null);
 
   useEffect(() => {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    cameraRef.current = camera;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true; // Enable shadow maps
@@ -140,10 +142,14 @@ const Wasteland = () => {
           // Play random hit sound
           const randomHitSound = hitSounds[Math.floor(Math.random() * hitSounds.length)];
           const hitAudio = new Audio(randomHitSound);
+          hitAudio.volume = volume; // Set volume
           hitAudio.play();
 
           // Create particle effect
-          createParticleEffect(banditBody.position);
+          createParticleEffect(intersects[0].point);
+
+          // Apply camera shake
+          applyCameraShake();
         }
       }
     };
@@ -182,6 +188,25 @@ const Wasteland = () => {
       animateParticles();
     };
 
+    const applyCameraShake = () => {
+      const shakeIntensity = 0.1;
+      const shakeDuration = 100; // in milliseconds
+
+      const originalPosition = camera.position.clone();
+      const shake = () => {
+        camera.position.x = originalPosition.x + (Math.random() - 0.5) * shakeIntensity;
+        camera.position.y = originalPosition.y + (Math.random() - 0.5) * shakeIntensity;
+        camera.position.z = originalPosition.z + (Math.random() - 0.5) * shakeIntensity;
+      };
+
+      const resetCameraPosition = () => {
+        camera.position.copy(originalPosition);
+      };
+
+      shake();
+      setTimeout(resetCameraPosition, shakeDuration);
+    };
+
     window.addEventListener('click', onMouseClick);
 
     const animate = () => {
@@ -214,7 +239,7 @@ const Wasteland = () => {
       window.removeEventListener('click', onMouseClick);
       mountRef.current.removeChild(renderer.domElement);
     };
-  }, []);
+  }, [volume]);
 
   return <div ref={mountRef} className="wasteland-container"></div>;
 };
