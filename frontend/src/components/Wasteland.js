@@ -11,8 +11,9 @@ const Wasteland = () => {
   useEffect(() => {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true; // Enable shadow maps
     mountRef.current.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -37,12 +38,13 @@ const Wasteland = () => {
     const floorTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/soil4k.png');
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set(4, 4); // Scale the texture to cover the floor
+    floorTexture.repeat.set(1, 1); // Scale the texture to cover the floor
 
     const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture });
     const floorGeometry = new THREE.PlaneGeometry(100, 100);
     const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
     floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.receiveShadow = true; // Enable shadows for the floor
     scene.add(floorMesh);
 
     const loader = new GLTFLoader();
@@ -55,6 +57,11 @@ const Wasteland = () => {
       for (let i = 0; i < 5; i++) {
         const bandit = gltf.scene.clone();
         bandit.position.set(Math.random() * 10 - 5, 0, Math.random() * 10 - 5);
+        bandit.traverse((node) => {
+          if (node.isMesh) {
+            node.castShadow = true; // Enable shadows for the bandit model
+          }
+        });
         scene.add(bandit);
         bandits.push(bandit);
 
@@ -76,8 +83,14 @@ const Wasteland = () => {
       }
     });
 
+    // Add sunlight
     const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 5, 5).normalize();
+    light.position.set(5, 10, 5);
+    light.castShadow = true; // Enable shadows for the light
+    light.shadow.mapSize.width = 1024;
+    light.shadow.mapSize.height = 1024;
+    light.shadow.camera.near = 0.5;
+    light.shadow.camera.far = 50;
     scene.add(light);
 
     camera.position.z = 5;
