@@ -63,7 +63,7 @@ const Wasteland = ({ volume }) => {
 
     // Load floor texture
     const textureLoader = new THREE.TextureLoader();
-    const floorTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/soil4k.png');
+    const floorTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/soil2.png');
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set(1, 1); // Use the texture without scaling
