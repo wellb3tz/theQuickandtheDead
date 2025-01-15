@@ -142,6 +142,7 @@ const Wasteland = ({ volume }) => {
 
       if (intersects.length > 0) {
         const hitbox = intersects[0].object;
+        const intersectionPoint = intersects[0].point; // Get the exact intersection point
         const index = hitboxesRef.current.indexOf(hitbox);
         if (index !== -1) {
           const banditBody = banditBodiesRef.current[index];
@@ -167,8 +168,8 @@ const Wasteland = ({ volume }) => {
 
           // Trigger particle system
           if (particleSystemRef.current) {
-            console.log('Triggering particle system at position', banditBody.position);
-            particleSystemRef.current.triggerParticles(banditBody.position);
+            console.log('Triggering particle system at position', intersectionPoint);
+            particleSystemRef.current.triggerParticles(intersectionPoint);
           }
         }
       }

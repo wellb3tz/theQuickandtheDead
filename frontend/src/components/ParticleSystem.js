@@ -10,7 +10,7 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
   const frameTextures = useRef([]);
   const currentFrame = useRef(0);
   const totalFrames = 30; // Adjust this to the number of frames you have
-  const frameDuration = 50; // Duration of each frame in milliseconds
+  const frameDuration = 40; // Duration of each frame in milliseconds
 
   useEffect(() => {
     const createNebula = async () => {
