@@ -36,9 +36,10 @@ const Wasteland = ({ volume }) => {
   const hitBanditsRef = useRef(new Set());
   const history = useHistory();
   const particleSystemRef = useRef(null);
+  const sceneRef = useRef(new THREE.Scene()); // Define the scene variable
 
   useEffect(() => {
-    const scene = new THREE.Scene();
+    const scene = sceneRef.current; // Use the scene variable
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     cameraRef.current = camera;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -247,7 +248,7 @@ const Wasteland = ({ volume }) => {
 
   return (
     <div ref={mountRef} className="wasteland-container">
-      <ParticleSystem ref={particleSystemRef} scene={scene} />
+      <ParticleSystem ref={particleSystemRef} scene={sceneRef.current} />
       {remainingBandits === 0 && (
         <button onClick={handleLeaveArea} className="leave-area-button">
           Leave area
