@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import Nebula from 'three-nebula';
 import { SpriteRenderer, Emitter, Rate, Span, Position, Mass, Radius, Life, Body, RadialVelocity, Color } from 'three-nebula';
 import * as THREE from 'three';
 
-const ParticleSystem = ({ scene }) => {
+const ParticleSystem = forwardRef(({ scene }, ref) => {
   const nebulaRef = useRef(null);
+  const emitterRef = useRef(null);
 
   useEffect(() => {
     const createNebula = async () => {
@@ -32,6 +33,7 @@ const ParticleSystem = ({ scene }) => {
       nebula.addRenderer(new SpriteRenderer(scene, THREE));
 
       nebulaRef.current = nebula;
+      emitterRef.current = emitter;
     };
 
     createNebula();
@@ -43,7 +45,16 @@ const ParticleSystem = ({ scene }) => {
     };
   }, [scene]);
 
+  useImperativeHandle(ref, () => ({
+    triggerParticles(position) {
+      if (emitterRef.current) {
+        emitterRef.current.position.copy(position);
+        emitterRef.current.enable();
+      }
+    }
+  }));
+
   return null;
-};
+});
 
 export default ParticleSystem;

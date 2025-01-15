@@ -167,8 +167,7 @@ const Wasteland = ({ volume }) => {
 
           // Trigger particle system
           if (particleSystemRef.current) {
-            particleSystemRef.current.emitters[0].position.copy(banditBody.position);
-            particleSystemRef.current.emitters[0].enable();
+            particleSystemRef.current.triggerParticles(banditBody.position);
           }
         }
       }
