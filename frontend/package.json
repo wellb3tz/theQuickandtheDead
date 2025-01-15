@@ -10,7 +10,8 @@
     "react-router-dom": "^5.3.4",
     "react-scripts": "^5.0.1",
     "socket.io-client": "^4.8.1",
-    "three": "^0.172.0"
+    "three": "^0.172.0",
+    "three-nebula": "^10.0.3"
   },
   "scripts": {
     "start": "react-scripts start",

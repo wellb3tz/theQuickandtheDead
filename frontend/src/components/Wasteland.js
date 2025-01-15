@@ -18,6 +18,7 @@ import hitSound10 from '../sounds/hit10.mp3';
 import hitSound11 from '../sounds/hit11.mp3';
 import hitSound12 from '../sounds/hit12.mp3';
 import skullIcon from '../images/skull.png'; // Import the skull icon image
+import ParticleSystem from './ParticleSystem'; // Import the ParticleSystem component
 
 const hitSounds = [
   hitSound1, hitSound2, hitSound3, hitSound4, hitSound5, hitSound6,
@@ -34,6 +35,7 @@ const Wasteland = ({ volume }) => {
   const skullIconsRef = useRef([]);
   const hitBanditsRef = useRef(new Set());
   const history = useHistory();
+  const particleSystemRef = useRef(null);
 
   useEffect(() => {
     const scene = new THREE.Scene();
@@ -161,6 +163,12 @@ const Wasteland = ({ volume }) => {
             // Update remaining bandits count
             setRemainingBandits((prevCount) => prevCount - 1);
           }
+
+          // Trigger particle system
+          if (particleSystemRef.current) {
+            particleSystemRef.current.emitters[0].position.copy(banditBody.position);
+            particleSystemRef.current.emitters[0].enable();
+          }
         }
       }
     };
@@ -239,6 +247,7 @@ const Wasteland = ({ volume }) => {
 
   return (
     <div ref={mountRef} className="wasteland-container">
+      <ParticleSystem ref={particleSystemRef} scene={scene} />
       {remainingBandits === 0 && (
         <button onClick={handleLeaveArea} className="leave-area-button">
           Leave area
