@@ -9,7 +9,7 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 
   useEffect(() => {
     const createNebula = async () => {
-      const particleTexture = new THREE.TextureLoader().load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/particle.png');
+      const particleTexture = new THREE.TextureLoader().load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/particle2.png');
       const particleMaterial = new THREE.SpriteMaterial({ map: particleTexture });
 
       const emitter = new Emitter();
