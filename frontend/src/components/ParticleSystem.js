@@ -7,6 +7,10 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
   const nebulaRef = useRef(null);
   const emitterRef = useRef(null);
   const spriteRef = useRef(null);
+  const frameTextures = useRef([]);
+  const currentFrame = useRef(0);
+  const totalFrames = 30; // Adjust this to the number of frames you have
+  const frameDuration = 50; // Duration of each frame in milliseconds
 
   useEffect(() => {
     const createNebula = async () => {
@@ -45,9 +49,15 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
     createNebula();
 
     const textureLoader = new THREE.TextureLoader();
-    const gifTexture = textureLoader.load('https://i.imgur.com/9mC0caA.gif'); // Replace with the actual URL of your GIF
+    const frames = [];
 
-    const spriteMaterial = new THREE.SpriteMaterial({ map: gifTexture });
+    for (let i = 0; i < totalFrames; i++) {
+      frames.push(textureLoader.load(`https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/frame${i}.png`)); // Replace with the actual URL of your frames
+    }
+
+    frameTextures.current = frames;
+
+    const spriteMaterial = new THREE.SpriteMaterial({ map: frames[0] });
     const sprite = new THREE.Sprite(spriteMaterial);
     sprite.scale.set(2, 2, 1); // Adjust the size of the sprite
     sprite.visible = false; // Initially hide the sprite
@@ -74,11 +84,19 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
         console.log('Displaying blood splatter at position', position);
         spriteRef.current.position.copy(position);
         spriteRef.current.visible = true;
+        currentFrame.current = 0;
 
-        // Hide the sprite after a short delay
-        setTimeout(() => {
-          spriteRef.current.visible = false;
-        }, 500); // Adjust the duration as needed
+        const animateSprite = () => {
+          if (currentFrame.current < totalFrames) {
+            spriteRef.current.material.map = frameTextures.current[currentFrame.current];
+            currentFrame.current++;
+            setTimeout(animateSprite, frameDuration);
+          } else {
+            spriteRef.current.visible = false;
+          }
+        };
+
+        animateSprite();
       }
     }
   }));
