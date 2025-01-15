@@ -6,6 +6,7 @@ import * as THREE from 'three';
 const ParticleSystem = forwardRef(({ scene }, ref) => {
   const nebulaRef = useRef(null);
   const emitterRef = useRef(null);
+  const spriteRef = useRef(null);
 
   useEffect(() => {
     const createNebula = async () => {
@@ -43,10 +44,22 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 
     createNebula();
 
+    const textureLoader = new THREE.TextureLoader();
+    const gifTexture = textureLoader.load('https://i.imgur.com/9mC0caA.gif'); // Replace with the actual URL of your GIF
+
+    const spriteMaterial = new THREE.SpriteMaterial({ map: gifTexture });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(2, 2, 1); // Adjust the size of the sprite
+    sprite.visible = false; // Initially hide the sprite
+
+    scene.add(sprite);
+    spriteRef.current = sprite;
+
     return () => {
       if (nebulaRef.current) {
         nebulaRef.current.destroy();
       }
+      scene.remove(sprite);
     };
   }, [scene]);
 
@@ -56,6 +69,16 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
         console.log('Triggering particles at position', position);
         emitterRef.current.position.copy(position);
         emitterRef.current.emit();
+      }
+      if (spriteRef.current) {
+        console.log('Displaying blood splatter at position', position);
+        spriteRef.current.position.copy(position);
+        spriteRef.current.visible = true;
+
+        // Hide the sprite after a short delay
+        setTimeout(() => {
+          spriteRef.current.visible = false;
+        }, 500); // Adjust the duration as needed
       }
     }
   }));
