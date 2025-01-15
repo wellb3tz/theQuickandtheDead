@@ -167,6 +167,7 @@ const Wasteland = ({ volume }) => {
 
           // Trigger particle system
           if (particleSystemRef.current) {
+            console.log('Triggering particle system at position', banditBody.position);
             particleSystemRef.current.triggerParticles(banditBody.position);
           }
         }

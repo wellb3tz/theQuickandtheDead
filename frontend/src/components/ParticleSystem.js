@@ -34,6 +34,8 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 
       nebulaRef.current = nebula;
       emitterRef.current = emitter;
+
+      console.log('Particle system initialized', emitter);
     };
 
     createNebula();
@@ -48,8 +50,9 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
   useImperativeHandle(ref, () => ({
     triggerParticles(position) {
       if (emitterRef.current) {
+        console.log('Triggering particles at position', position);
         emitterRef.current.position.copy(position);
-        emitterRef.current.enable();
+        emitterRef.current.emit();
       }
     }
   }));
