@@ -128,6 +128,37 @@ const Wasteland = ({ volume }) => {
     light.shadow.camera.far = 50;
     scene.add(light);
 
+    // Add walls to create a narrow passage
+    const wallTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/rocky_wall.jpg'); // Replace with the actual URL of your rocky wall texture
+    wallTexture.wrapS = THREE.RepeatWrapping;
+    wallTexture.wrapT = THREE.RepeatWrapping;
+    wallTexture.repeat.set(1, 1);
+
+    const wallMaterial = new THREE.MeshBasicMaterial({ map: wallTexture });
+    const wallHeight = 10;
+    const wallThickness = 0.5;
+
+    const wallGeometry = new THREE.PlaneGeometry(10, wallHeight);
+
+    const wall1 = new THREE.Mesh(wallGeometry, wallMaterial);
+    wall1.position.set(0, wallHeight / 2, -5);
+    wall1.rotation.y = Math.PI;
+    scene.add(wall1);
+
+    const wall2 = new THREE.Mesh(wallGeometry, wallMaterial);
+    wall2.position.set(0, wallHeight / 2, 5);
+    scene.add(wall2);
+
+    const wall3 = new THREE.Mesh(wallGeometry, wallMaterial);
+    wall3.position.set(-5, wallHeight / 2, 0);
+    wall3.rotation.y = Math.PI / 2;
+    scene.add(wall3);
+
+    const wall4 = new THREE.Mesh(wallGeometry, wallMaterial);
+    wall4.position.set(5, wallHeight / 2, 0);
+    wall4.rotation.y = -Math.PI / 2;
+    scene.add(wall4);
+
     camera.position.z = 5;
 
     const raycaster = new THREE.Raycaster();
