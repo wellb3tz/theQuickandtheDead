@@ -55,7 +55,7 @@ const Wasteland = ({ volume }) => {
     controls.enablePan = true; // Enable panning
 
     const world = new CANNON.World();
-    world.gravity.set(0, -3, 0); // Set gravity
+    world.gravity.set(0, -25, 0); // Set gravity
 
     const groundBody = new CANNON.Body({
       mass: 0, // Mass of 0 makes the body static
