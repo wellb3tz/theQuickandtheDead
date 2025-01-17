@@ -129,33 +129,37 @@ const Wasteland = ({ volume }) => {
     scene.add(light);
 
     // Add walls to create a narrow passage
-    const wallTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/rocky_wall.jpg'); // Replace with the actual URL of your rocky wall texture
-    wallTexture.wrapS = THREE.RepeatWrapping;
-    wallTexture.wrapT = THREE.RepeatWrapping;
-    wallTexture.repeat.set(1, 1);
+    const wallMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 }); // Grey color for the walls
 
-    const wallMaterial = new THREE.MeshBasicMaterial({ map: wallTexture });
-    const wallHeight = 10;
-    const wallThickness = 0.5;
+    const createSlopeShape = () => {
+      const shape = new THREE.Shape();
+      shape.moveTo(-5, 0);
+      shape.lineTo(-5, 5);
+      shape.lineTo(5, 5);
+      shape.lineTo(5, 0);
+      shape.lineTo(0, -5);
+      shape.lineTo(-5, 0);
+      return shape;
+    };
 
-    const wallGeometry = new THREE.PlaneGeometry(10, wallHeight);
+    const wallGeometry = new THREE.ShapeGeometry(createSlopeShape());
 
     const wall1 = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall1.position.set(0, wallHeight / 2, -5);
-    wall1.rotation.y = Math.PI;
+    wall1.position.set(0, 0, -5);
     scene.add(wall1);
 
     const wall2 = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall2.position.set(0, wallHeight / 2, 5);
+    wall2.position.set(0, 0, 5);
+    wall2.rotation.y = Math.PI;
     scene.add(wall2);
 
     const wall3 = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall3.position.set(-5, wallHeight / 2, 0);
+    wall3.position.set(-5, 0, 0);
     wall3.rotation.y = Math.PI / 2;
     scene.add(wall3);
 
     const wall4 = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall4.position.set(5, wallHeight / 2, 0);
+    wall4.position.set(5, 0, 0);
     wall4.rotation.y = -Math.PI / 2;
     scene.add(wall4);
 
