@@ -106,7 +106,7 @@ const Wasteland = ({ volume }) => {
 
         void main() {
           float alpha = 1.0 - smoothstep(radius * 0.5, radius, vDistance);
-          vec4 color = texture2D(texture, vUv);
+          vec4 color = texture(texture, vUv);
           gl_FragColor = vec4(color.rgb, color.a * alpha);
         }
       `,
