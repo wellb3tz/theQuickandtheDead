@@ -78,6 +78,44 @@ const Wasteland = ({ volume }) => {
     floorMesh.receiveShadow = true; // Enable shadows for the floor
     scene.add(floorMesh);
 
+    // Create a larger transparent mesh
+    const extendedFloorGeometry = new THREE.PlaneGeometry(100, 100, 32, 32);
+    const extendedFloorMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        center: { value: new THREE.Vector2(0, 0) },
+        radius: { value: 50.0 },
+        texture: { value: floorTexture }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying float vDistance;
+
+        void main() {
+          vUv = uv;
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vDistance = length(worldPosition.xz);
+          gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform vec2 center;
+        uniform float radius;
+        uniform sampler2D texture;
+        varying vec2 vUv;
+        varying float vDistance;
+
+        void main() {
+          float alpha = 1.0 - smoothstep(radius * 0.5, radius, vDistance);
+          vec4 color = texture2D(texture, vUv);
+          gl_FragColor = vec4(color.rgb, color.a * alpha);
+        }
+      `,
+      transparent: true
+    });
+    const extendedFloorMesh = new THREE.Mesh(extendedFloorGeometry, extendedFloorMaterial);
+    extendedFloorMesh.rotation.x = -Math.PI / 2;
+    scene.add(extendedFloorMesh);
+
     // Load skybox
     const skyboxTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/skybox_desert1.png', () => {
       const rt = new THREE.WebGLCubeRenderTarget(skyboxTexture.image.height);

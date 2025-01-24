@@ -105,7 +105,7 @@ input[type="range"] {
   position: absolute;
   bottom: 20px; /* Position the button at the bottom */
   left: 50%;
-  transform: translate(-50%);
+  transform: translateY(-2px);
   padding: 10px 20px;
   font-size: 18px;
   background-color: #000;
