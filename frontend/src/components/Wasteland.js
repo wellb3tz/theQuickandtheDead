@@ -69,10 +69,7 @@ const Wasteland = ({ volume }) => {
     const floorTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/soil2.png');
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set(50, 50); // Single large texture repeat
-    floorTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    floorTexture.magFilter = THREE.LinearFilter;
-    floorTexture.minFilter = THREE.LinearMipmapLinearFilter;
+    floorTexture.repeat.set(1, 1); // Single texture
 
     // Create a larger transparent mesh
     const extendedFloorGeometry = new THREE.PlaneGeometry(100, 100, 32, 32);
@@ -87,7 +84,7 @@ const Wasteland = ({ volume }) => {
         varying float vDistance;
 
         void main() {
-          vUv = uv * 50.0; // Direct UV scaling
+          vUv = uv; // Simple UV mapping without scaling
           vec4 worldPosition = modelMatrix * vec4(position, 1.0);
           vDistance = length(worldPosition.xz);
           gl_Position = projectionMatrix * viewMatrix * worldPosition;

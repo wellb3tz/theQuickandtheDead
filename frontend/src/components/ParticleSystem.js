@@ -64,14 +64,10 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 
     createNebula();
 
-    // Update the sprite material creation
+    // Simplify sprite material
     const spriteMaterial = new THREE.SpriteMaterial({ 
-      map: frameTextures.current[0],
-      transparent: true,
-      alphaTest: 0.1,
-      depthTest: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,  // Change blending mode
+      map: frameTextures.current[0],  // Just use the original sprite texture
+      transparent: true  // Keep only transparency for proper rendering
     });
     const sprite = new THREE.Sprite(spriteMaterial);
     sprite.scale.set(2, 2, 1); // Adjust the size of the sprite
