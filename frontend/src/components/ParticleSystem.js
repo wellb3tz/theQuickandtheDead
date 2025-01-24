@@ -14,42 +14,24 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 
   useEffect(() => {
     const createNebula = async () => {
+      // Load frame textures
       const textureLoader = new THREE.TextureLoader();
       const frames = [];
-
       for (let i = 1; i < totalFrames; i++) {
-        frames.push(textureLoader.load(`https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/frame${i}.png`)); // Replace with the actual URL of your frames
+        frames.push(textureLoader.load(`https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/frame${i}.png`));
       }
-
       frameTextures.current = frames;
 
-      // Update the particle material settings
-      const particleMaterial = new THREE.SpriteMaterial({
-        map: frames[0],
-        transparent: true,
-        alphaTest: 0.1,
-        depthTest: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        color: new THREE.Color(0xff0000), // Add red color
-        opacity: 1 // Set full opacity
-      });
-
       const emitter = new Emitter();
-      // Update emitter settings
       emitter
-        .setRate(new Rate(new Span(50, 100), new Span(0.01))) // Increase the quantity of particles
+        .setRate(new Rate(new Span(50, 100), new Span(0.01)))
         .addInitializers([
           new Position(new THREE.Vector3(0, 0, 0)),
           new Mass(1),
-          new Radius(0.5, 1), // Increase the radius of the particles
+          new Radius(0.5, 1),
           new Life(1, 2),
-          new Body(particleMaterial),
+          new Body(new THREE.SpriteMaterial({ map: frames[0] })),
           new RadialVelocity(50, new THREE.Vector3(0, 1, 0), 180)
-        ])
-        .addBehaviours([
-          new Color(new THREE.Color(0xff0000), new THREE.Color(0x660000)), // Adjust color transition
-          new Radius(1, 0.1) // Adjust particle size over lifetime
         ]);
 
       const nebula = new Nebula();
@@ -64,27 +46,10 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 
     createNebula();
 
-    // Simplify sprite material
-    const spriteMaterial = new THREE.SpriteMaterial({ 
-      map: frameTextures.current[0],  // Just use the original sprite texture
-      transparent: true,  // Keep only transparency for proper rendering
-      alphaTest: 0.01,  // Lower alpha test threshold
-      depthTest: false, // Disable depth testing
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
-    });
-    const sprite = new THREE.Sprite(spriteMaterial);
-    sprite.scale.set(2, 2, 1); // Adjust the size of the sprite
-    sprite.visible = false; // Initially hide the sprite
-
-    scene.add(sprite);
-    spriteRef.current = sprite;
-
     return () => {
       if (nebulaRef.current) {
         nebulaRef.current.destroy();
       }
-      scene.remove(sprite);
     };
   }, [scene]);
 
