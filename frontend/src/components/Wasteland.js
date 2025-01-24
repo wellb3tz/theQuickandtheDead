@@ -70,6 +70,9 @@ const Wasteland = ({ volume }) => {
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set(1, 1); // Use the texture without scaling
+    floorTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    floorTexture.magFilter = THREE.LinearFilter;
+    floorTexture.minFilter = THREE.LinearMipmapLinearFilter;
 
     // Create a larger transparent mesh
     const extendedFloorGeometry = new THREE.PlaneGeometry(100, 100, 32, 32);
@@ -86,7 +89,8 @@ const Wasteland = ({ volume }) => {
         uniform vec2 textureRepeat;
 
         void main() {
-          vUv = uv * textureRepeat; // Scale UVs to repeat texture
+          // Add slight offset to prevent exact seam alignment
+          vUv = (uv + 0.001) * textureRepeat;
           vec4 worldPosition = modelMatrix * vec4(position, 1.0);
           vDistance = length(worldPosition.xz);
           gl_Position = projectionMatrix * viewMatrix * worldPosition;
@@ -100,8 +104,11 @@ const Wasteland = ({ volume }) => {
         varying float vDistance;
 
         void main() {
+          // Sample texture with slight offset for seam blending
+          vec4 color1 = texture2D(floorTexture, vUv);
+          vec4 color2 = texture2D(floorTexture, vUv + vec2(0.001, 0.001));
+          vec4 color = mix(color1, color2, 0.5);
           float alpha = 1.0 - smoothstep(radius * 0.5, radius, vDistance);
-          vec4 color = texture2D(floorTexture, vUv);
           gl_FragColor = vec4(color.rgb, color.a * alpha);
         }
       `,
@@ -212,10 +219,17 @@ const Wasteland = ({ volume }) => {
 
     const createSkullIcon = (position) => {
       const spriteMap = new THREE.TextureLoader().load(skullIcon);
-      const spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap });
+      const spriteMaterial = new THREE.SpriteMaterial({ 
+        map: spriteMap,
+        transparent: true,
+        alphaTest: 0.5,
+        depthTest: true,
+        depthWrite: false,
+        blending: THREE.NormalBlending
+      });
       const sprite = new THREE.Sprite(spriteMaterial);
-      sprite.position.set(position.x, position.y + 2, position.z); // Position above the bandit
-      sprite.scale.set(0.5, 0.5, 0.5); // Adjust the size of the skull icon
+      sprite.position.set(position.x, position.y + 2, position.z);
+      sprite.scale.set(0.5, 0.5, 0.5);
       return sprite;
     };
 
