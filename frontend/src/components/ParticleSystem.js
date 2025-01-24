@@ -124,4 +124,20 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
   return null;
 });
 
+const createParticle = (frames) => {
+  const spriteMaterial = new THREE.SpriteMaterial({ 
+    map: frames[0],
+    transparent: true,  // Keep transparent for sprite handling
+    alphaTest: 0.1,    // Lower alpha test to preserve sprite edges
+    depthWrite: false, // Disable depth writing
+    depthTest: true,   // Keep depth testing
+    opacity: 1.0,      // Full opacity
+    blending: THREE.NormalBlending  // Use normal blending
+  });
+
+  const sprite = new THREE.Sprite(spriteMaterial);
+  sprite.scale.set(1, 1, 1);  // Adjust scale if needed
+  return sprite;
+};
+
 export default ParticleSystem;
