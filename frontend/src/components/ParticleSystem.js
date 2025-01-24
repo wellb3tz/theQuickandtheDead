@@ -14,13 +14,29 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 
   useEffect(() => {
     const createNebula = async () => {
-      const particleMaterial = new THREE.PointsMaterial({
-        color: 0xff0000,
-        size: 0.5, // Increase the size of the particles
-        sizeAttenuation: true,
+      const textureLoader = new THREE.TextureLoader();
+      const frames = [];
+
+      for (let i = 1; i < totalFrames; i++) {
+        frames.push(textureLoader.load(`https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/frame${i}.png`)); // Replace with the actual URL of your frames
+      }
+
+      frameTextures.current = frames;
+
+      // Update the particle material settings
+      const particleMaterial = new THREE.SpriteMaterial({
+        map: frames[0],
+        transparent: true,
+        alphaTest: 0.1,
+        depthTest: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        color: new THREE.Color(0xff0000), // Add red color
+        opacity: 1 // Set full opacity
       });
 
       const emitter = new Emitter();
+      // Update emitter settings
       emitter
         .setRate(new Rate(new Span(50, 100), new Span(0.01))) // Increase the quantity of particles
         .addInitializers([
@@ -32,8 +48,8 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
           new RadialVelocity(50, new THREE.Vector3(0, 1, 0), 180)
         ])
         .addBehaviours([
-          new Color(new THREE.Color(0xff0000), new THREE.Color(0x000000)),
-          new Radius(1, 0.5) // Increase the radius of the particles
+          new Color(new THREE.Color(0xff0000), new THREE.Color(0x660000)), // Adjust color transition
+          new Radius(1, 0.1) // Adjust particle size over lifetime
         ]);
 
       const nebula = new Nebula();
@@ -48,18 +64,9 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 
     createNebula();
 
-    const textureLoader = new THREE.TextureLoader();
-    const frames = [];
-
-    for (let i = 1; i < totalFrames; i++) {
-      frames.push(textureLoader.load(`https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/frame${i}.png`)); // Replace with the actual URL of your frames
-    }
-
-    frameTextures.current = frames;
-
     // Update the sprite material creation
     const spriteMaterial = new THREE.SpriteMaterial({ 
-      map: frames[0],
+      map: frameTextures.current[0],
       transparent: true,
       alphaTest: 0.1,
       depthTest: true,

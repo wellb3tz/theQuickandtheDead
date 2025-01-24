@@ -69,7 +69,7 @@ const Wasteland = ({ volume }) => {
     const floorTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/soil2.png');
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set(20, 20); // Increase the repeat value for a single large texture
+    floorTexture.repeat.set(50, 50); // Single large texture repeat
     floorTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     floorTexture.magFilter = THREE.LinearFilter;
     floorTexture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -80,30 +80,27 @@ const Wasteland = ({ volume }) => {
       uniforms: {
         center: { value: new THREE.Vector2(0, 0) },
         radius: { value: 50.0 },
-        floorTexture: { value: floorTexture },  // Use the same texture as main floor
-        textureRepeat: { value: new THREE.Vector2(20, 20) }  // Match the texture repeat
+        floorTexture: { value: floorTexture }
       },
       vertexShader: `
         varying vec2 vUv;
         varying float vDistance;
-        uniform vec2 textureRepeat;
 
         void main() {
-          vUv = uv * textureRepeat;  // Scale UVs to repeat texture
+          vUv = uv * 50.0; // Direct UV scaling
           vec4 worldPosition = modelMatrix * vec4(position, 1.0);
           vDistance = length(worldPosition.xz);
           gl_Position = projectionMatrix * viewMatrix * worldPosition;
         }
       `,
       fragmentShader: `
-        uniform vec2 center;
         uniform float radius;
         uniform sampler2D floorTexture;
         varying vec2 vUv;
         varying float vDistance;
 
         void main() {
-          vec4 color = texture2D(floorTexture, vUv);  // Single texture sample
+          vec4 color = texture2D(floorTexture, vUv);
           float alpha = 1.0 - smoothstep(radius * 0.5, radius, vDistance);
           gl_FragColor = vec4(color.rgb, color.a * alpha);
         }
