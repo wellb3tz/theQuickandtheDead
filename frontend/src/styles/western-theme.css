@@ -105,7 +105,7 @@ input[type="range"] {
   position: absolute;
   bottom: 20px; /* Position the button at the bottom */
   left: 50%;
-  transform: translateY(-2px);
+  transform: translateX(-50%);
   padding: 10px 20px;
   font-size: 18px;
   background-color: #000;
@@ -113,4 +113,9 @@ input[type="range"] {
   border: none;
   border-radius: 5px;
   cursor: pointer;
+}
+
+.leave-area-button:hover {
+  background-color: #333; /* Darker background on hover */
+  transform: translateX(-50%); /* Ensure it stays centered */
 }
