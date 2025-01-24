@@ -155,18 +155,24 @@ const Wasteland = ({ volume }) => {
 
     // Add sunlight
     const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 10, 5);
+    light.position.set(10, 10, 10);
     light.castShadow = true; // Enable shadows for the light
-    light.shadow.mapSize.width = 4096;  // Increased resolution
-    light.shadow.mapSize.height = 4096; // Increased resolution
-    light.shadow.camera.near = 0.1;
-    light.shadow.camera.far = 100;
-    light.shadow.camera.left = -20;
-    light.shadow.camera.right = 20;
-    light.shadow.camera.top = 20;
-    light.shadow.camera.bottom = -20;
-    light.shadow.bias = -0.001;  // Reduce shadow acne
+    light.shadow.mapSize.width = 1024;
+    light.shadow.mapSize.height = 1024;
+    light.shadow.camera.near = 0.5;
+    light.shadow.camera.far = 500;
+    light.shadow.camera.left = -50;
+    light.shadow.camera.right = 50;
+    light.shadow.camera.top = 50;
+    light.shadow.camera.bottom = -50;
     scene.add(light);
+
+    // Add helpers for debugging
+    const lightHelper = new THREE.DirectionalLightHelper(light);
+    scene.add(lightHelper);
+
+    const shadowCameraHelper = new THREE.CameraHelper(light.shadow.camera);
+    scene.add(shadowCameraHelper);
 
     camera.position.z = 5;
 
