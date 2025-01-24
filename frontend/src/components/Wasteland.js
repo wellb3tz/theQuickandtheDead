@@ -71,27 +71,22 @@ const Wasteland = ({ volume }) => {
     floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set(1, 1); // Use the texture without scaling
 
-    const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture });
-    const floorGeometry = new THREE.PlaneGeometry(10, 10); // Smaller floor area
-    const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
-    floorMesh.rotation.x = -Math.PI / 2;
-    floorMesh.receiveShadow = true; // Enable shadows for the floor
-    scene.add(floorMesh);
-
     // Create a larger transparent mesh
     const extendedFloorGeometry = new THREE.PlaneGeometry(100, 100, 32, 32);
     const extendedFloorMaterial = new THREE.ShaderMaterial({
       uniforms: {
         center: { value: new THREE.Vector2(0, 0) },
         radius: { value: 50.0 },
-        floorTexture: { value: floorTexture }  // Use the same texture as main floor
+        floorTexture: { value: floorTexture },  // Use the same texture as main floor
+        textureRepeat: { value: new THREE.Vector2(10, 10) }  // Control texture tiling
       },
       vertexShader: `
         varying vec2 vUv;
         varying float vDistance;
+        uniform vec2 textureRepeat;
 
         void main() {
-          vUv = uv;
+          vUv = uv * textureRepeat; // Scale UVs to repeat texture
           vec4 worldPosition = modelMatrix * vec4(position, 1.0);
           vDistance = length(worldPosition.xz);
           gl_Position = projectionMatrix * viewMatrix * worldPosition;
@@ -115,6 +110,7 @@ const Wasteland = ({ volume }) => {
     });
     const extendedFloorMesh = new THREE.Mesh(extendedFloorGeometry, extendedFloorMaterial);
     extendedFloorMesh.rotation.x = -Math.PI / 2;
+    extendedFloorMesh.receiveShadow = true; // Enable shadows for the extended floor
     scene.add(extendedFloorMesh);
 
     // Load skybox
