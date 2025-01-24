@@ -45,6 +45,7 @@ const Wasteland = ({ volume }) => {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true; // Enable shadow maps
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mountRef.current.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -127,6 +128,7 @@ const Wasteland = ({ volume }) => {
         bandit.traverse((node) => {
           if (node.isMesh) {
             node.castShadow = true; // Enable shadows for the bandit model
+            node.receiveShadow = true;
           }
         });
         scene.add(bandit);
@@ -154,10 +156,14 @@ const Wasteland = ({ volume }) => {
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(5, 10, 5);
     light.castShadow = true; // Enable shadows for the light
-    light.shadow.mapSize.width = 1024;
-    light.shadow.mapSize.height = 1024;
+    light.shadow.mapSize.width = 2048;
+    light.shadow.mapSize.height = 2048;
     light.shadow.camera.near = 0.5;
     light.shadow.camera.far = 50;
+    light.shadow.camera.left = -15;
+    light.shadow.camera.right = 15;
+    light.shadow.camera.top = 15;
+    light.shadow.camera.bottom = -15;
     scene.add(light);
 
     camera.position.z = 5;
