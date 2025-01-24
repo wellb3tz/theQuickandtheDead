@@ -67,7 +67,11 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
     // Simplify sprite material
     const spriteMaterial = new THREE.SpriteMaterial({ 
       map: frameTextures.current[0],  // Just use the original sprite texture
-      transparent: true  // Keep only transparency for proper rendering
+      transparent: true,  // Keep only transparency for proper rendering
+      alphaTest: 0.01,  // Lower alpha test threshold
+      depthTest: false, // Disable depth testing
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
     });
     const sprite = new THREE.Sprite(spriteMaterial);
     sprite.scale.set(2, 2, 1); // Adjust the size of the sprite
@@ -99,11 +103,16 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 
         const animateSprite = () => {
           if (currentFrame.current < totalFrames) {
-            spriteRef.current.material.map = frameTextures.current[currentFrame.current];
-            currentFrame.current++;
-            setTimeout(animateSprite, frameDuration);
+            if (spriteRef.current && frameTextures.current[currentFrame.current]) {
+              spriteRef.current.material.map = frameTextures.current[currentFrame.current];
+              spriteRef.current.material.needsUpdate = true; // Force material update
+              currentFrame.current++;
+              setTimeout(animateSprite, frameDuration);
+            }
           } else {
-            spriteRef.current.visible = false;
+            if (spriteRef.current) {
+              spriteRef.current.visible = false;
+            }
           }
         };
 
