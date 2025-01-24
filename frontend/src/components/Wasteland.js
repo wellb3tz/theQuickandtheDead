@@ -128,41 +128,6 @@ const Wasteland = ({ volume }) => {
     light.shadow.camera.far = 50;
     scene.add(light);
 
-    // Add walls to create a narrow passage
-    const wallMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 }); // Grey color for the walls
-
-    const createSlopeShape = () => {
-      const shape = new THREE.Shape();
-      shape.moveTo(-5, 0);
-      shape.lineTo(-5, 5);
-      shape.lineTo(5, 5);
-      shape.lineTo(5, 0);
-      shape.lineTo(0, -5);
-      shape.lineTo(-5, 0);
-      return shape;
-    };
-
-    const wallGeometry = new THREE.ShapeGeometry(createSlopeShape());
-
-    const wall1 = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall1.position.set(0, 0, -5);
-    scene.add(wall1);
-
-    const wall2 = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall2.position.set(0, 0, 5);
-    wall2.rotation.y = Math.PI;
-    scene.add(wall2);
-
-    const wall3 = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall3.position.set(-5, 0, 0);
-    wall3.rotation.y = Math.PI / 2;
-    scene.add(wall3);
-
-    const wall4 = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall4.position.set(5, 0, 0);
-    wall4.rotation.y = -Math.PI / 2;
-    scene.add(wall4);
-
     camera.position.z = 5;
 
     const raycaster = new THREE.Raycaster();
