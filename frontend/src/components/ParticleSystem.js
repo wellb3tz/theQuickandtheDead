@@ -67,7 +67,7 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
     // Simplify sprite material
     const spriteMaterial = new THREE.SpriteMaterial({ 
       map: frameTextures.current[0],  // Just use the original sprite texture
-      transparent: false,  // Keep only transparency for proper rendering
+      transparent: true,  // Keep only transparency for proper rendering
       alphaTest: 0.01,  // Lower alpha test threshold
       depthTest: false, // Disable depth testing
       depthWrite: false,
@@ -127,12 +127,9 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 const createParticle = (frames) => {
   const spriteMaterial = new THREE.SpriteMaterial({ 
     map: frames[0],
-    transparent: true,  // Keep transparent for sprite handling
-    alphaTest: 0.1,    // Lower alpha test to preserve sprite edges
-    depthWrite: false, // Disable depth writing
-    depthTest: true,   // Keep depth testing
-    opacity: 1.0,      // Full opacity
-    blending: THREE.NormalBlending  // Use normal blending
+    transparent: false,  // Disable transparency
+    depthTest: true,    // Enable depth testing
+    depthWrite: true    // Enable depth writing
   });
 
   const sprite = new THREE.Sprite(spriteMaterial);
