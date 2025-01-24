@@ -16,12 +16,15 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
     }
     frameTextures.current = frames;
 
-    // Create initial sprite
     const spriteMaterial = new THREE.SpriteMaterial({ 
-      map: frames[0]
+      map: frames[0],
+      depthTest: false,
+      depthWrite: false
     });
+
     const sprite = new THREE.Sprite(spriteMaterial);
     sprite.visible = false;
+    sprite.renderOrder = 999; // Ensure sprites render on top
     scene.add(sprite);
     spriteRef.current = sprite;
   }, [scene]);

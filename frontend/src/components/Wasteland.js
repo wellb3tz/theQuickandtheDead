@@ -129,6 +129,7 @@ const Wasteland = ({ volume }) => {
           if (node.isMesh) {
             node.castShadow = true; // Enable shadows for the bandit model
             node.receiveShadow = true;
+            node.material.shadowSide = THREE.FrontSide;
           }
         });
         scene.add(bandit);
@@ -156,14 +157,15 @@ const Wasteland = ({ volume }) => {
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(5, 10, 5);
     light.castShadow = true; // Enable shadows for the light
-    light.shadow.mapSize.width = 2048;
-    light.shadow.mapSize.height = 2048;
-    light.shadow.camera.near = 0.5;
-    light.shadow.camera.far = 50;
-    light.shadow.camera.left = -15;
-    light.shadow.camera.right = 15;
-    light.shadow.camera.top = 15;
-    light.shadow.camera.bottom = -15;
+    light.shadow.mapSize.width = 4096;  // Increased resolution
+    light.shadow.mapSize.height = 4096; // Increased resolution
+    light.shadow.camera.near = 0.1;
+    light.shadow.camera.far = 100;
+    light.shadow.camera.left = -20;
+    light.shadow.camera.right = 20;
+    light.shadow.camera.top = 20;
+    light.shadow.camera.bottom = -20;
+    light.shadow.bias = -0.001;  // Reduce shadow acne
     scene.add(light);
 
     camera.position.z = 5;
