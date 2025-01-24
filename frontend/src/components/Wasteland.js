@@ -84,7 +84,7 @@ const Wasteland = ({ volume }) => {
       uniforms: {
         center: { value: new THREE.Vector2(0, 0) },
         radius: { value: 50.0 },
-        floorTexture: { value: floorTexture }  // Changed name to be more specific
+        floorTexture: { value: floorTexture }  // Use the same texture as main floor
       },
       vertexShader: `
         varying vec2 vUv;
@@ -100,18 +100,18 @@ const Wasteland = ({ volume }) => {
       fragmentShader: `
         uniform vec2 center;
         uniform float radius;
-        uniform sampler2D floorTexture;  // Changed to match uniform name
+        uniform sampler2D floorTexture;
         varying vec2 vUv;
         varying float vDistance;
 
         void main() {
           float alpha = 1.0 - smoothstep(radius * 0.5, radius, vDistance);
-          vec4 color = texture2D(floorTexture, vUv);  // Use texture2D for sampling
+          vec4 color = texture2D(floorTexture, vUv);
           gl_FragColor = vec4(color.rgb, color.a * alpha);
         }
       `,
       transparent: true,
-      side: THREE.DoubleSide  // Added to ensure visibility from both sides
+      side: THREE.DoubleSide
     });
     const extendedFloorMesh = new THREE.Mesh(extendedFloorGeometry, extendedFloorMaterial);
     extendedFloorMesh.rotation.x = -Math.PI / 2;
