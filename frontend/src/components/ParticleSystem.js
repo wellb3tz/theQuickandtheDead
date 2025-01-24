@@ -51,7 +51,7 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
     const textureLoader = new THREE.TextureLoader();
     const frames = [];
 
-    for (let i = 0; i < totalFrames; i++) {
+    for (let i = 1; i < totalFrames; i++) {
       frames.push(textureLoader.load(`https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/frame${i}.png`)); // Replace with the actual URL of your frames
     }
 
