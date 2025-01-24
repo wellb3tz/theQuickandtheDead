@@ -57,7 +57,15 @@ const ParticleSystem = forwardRef(({ scene }, ref) => {
 
     frameTextures.current = frames;
 
-    const spriteMaterial = new THREE.SpriteMaterial({ map: frames[0] });
+    // Update the sprite material creation
+    const spriteMaterial = new THREE.SpriteMaterial({ 
+      map: frames[0],
+      transparent: true,
+      alphaTest: 0.1,
+      depthTest: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,  // Change blending mode
+    });
     const sprite = new THREE.Sprite(spriteMaterial);
     sprite.scale.set(2, 2, 1); // Adjust the size of the sprite
     sprite.visible = false; // Initially hide the sprite

@@ -69,7 +69,7 @@ const Wasteland = ({ volume }) => {
     const floorTexture = textureLoader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/soil2.png');
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set(1, 1); // Use the texture without scaling
+    floorTexture.repeat.set(20, 20); // Increase the repeat value for a single large texture
     floorTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     floorTexture.magFilter = THREE.LinearFilter;
     floorTexture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -81,7 +81,7 @@ const Wasteland = ({ volume }) => {
         center: { value: new THREE.Vector2(0, 0) },
         radius: { value: 50.0 },
         floorTexture: { value: floorTexture },  // Use the same texture as main floor
-        textureRepeat: { value: new THREE.Vector2(10, 10) }  // Control texture tiling
+        textureRepeat: { value: new THREE.Vector2(20, 20) }  // Match the texture repeat
       },
       vertexShader: `
         varying vec2 vUv;
@@ -89,8 +89,7 @@ const Wasteland = ({ volume }) => {
         uniform vec2 textureRepeat;
 
         void main() {
-          // Add slight offset to prevent exact seam alignment
-          vUv = (uv + 0.001) * textureRepeat;
+          vUv = uv * textureRepeat;  // Scale UVs to repeat texture
           vec4 worldPosition = modelMatrix * vec4(position, 1.0);
           vDistance = length(worldPosition.xz);
           gl_Position = projectionMatrix * viewMatrix * worldPosition;
@@ -104,10 +103,7 @@ const Wasteland = ({ volume }) => {
         varying float vDistance;
 
         void main() {
-          // Sample texture with slight offset for seam blending
-          vec4 color1 = texture2D(floorTexture, vUv);
-          vec4 color2 = texture2D(floorTexture, vUv + vec2(0.001, 0.001));
-          vec4 color = mix(color1, color2, 0.5);
+          vec4 color = texture2D(floorTexture, vUv);  // Single texture sample
           float alpha = 1.0 - smoothstep(radius * 0.5, radius, vDistance);
           gl_FragColor = vec4(color.rgb, color.a * alpha);
         }
