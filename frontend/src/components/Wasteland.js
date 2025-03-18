@@ -121,7 +121,7 @@ const Wasteland = ({ volume }) => {
     const loader = new GLTFLoader();
 
     // Load bandit model
-    loader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/bandit1.glb', (gltf) => {
+    loader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/50backup.glb', (gltf) => {
       for (let i = 0; i < 5; i++) {
         const bandit = gltf.scene.clone();
         bandit.position.set(Math.random() * 10 - 5, 0, Math.random() * 10 - 5);
