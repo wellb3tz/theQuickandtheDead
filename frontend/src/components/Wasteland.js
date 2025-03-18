@@ -28,7 +28,7 @@ const hitSounds = [
 const Wasteland = ({ volume }) => {
   const mountRef = useRef(null);
   const cameraRef = useRef(null);
-  const [remainingBandits, setRemainingBandits] = useState(5);
+  const [remainingBandits, setRemainingBandits] = useState(1); // Changed from 5
   const banditsRef = useRef([]);
   const banditBodiesRef = useRef([]);
   const hitboxesRef = useRef([]);
@@ -122,34 +122,37 @@ const Wasteland = ({ volume }) => {
 
     // Load bandit model
     loader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/50backup.glb', (gltf) => {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 1; i++) { // Single bandit
         const bandit = gltf.scene.clone();
+
+        // Initialize ragdoll physics for the band's skeleton
+        const bonePhysicsMap = createRagdollForSkinnedMesh(bandit, world, scene);
+        bandit.userData.bonePhysicsMap = bonePhysicsMap;
+        if(bonePhysicsMap.size === 0) {
+          console.warn('No skinned mesh found in the model!');
+        }
+
+        // Use the first bone as the main physics body for positioning the bandit
+        const skinnedMesh = bandit.getObjectByProperty('type', 'SkinnedMesh');
+        if (skinnedMesh && skinnedMesh.skeleton && skinnedMesh.skeleton.bones.length > 0) {
+          const rootBone = skinnedMesh.skeleton.bones[0];
+          if (bonePhysicsMap.has(rootBone.name)) {
+            banditBodiesRef.current.push(bonePhysicsMap.get(rootBone.name).body);
+          }
+        }
+
         bandit.position.set(Math.random() * 10 - 5, 0, Math.random() * 10 - 5);
         bandit.traverse((node) => {
           if (node.isMesh) {
-            node.castShadow = true; // Enable shadows for the bandit model
+            node.castShadow = true;
             node.receiveShadow = true;
             node.material.shadowSide = THREE.FrontSide;
           }
         });
         scene.add(bandit);
         banditsRef.current.push(bandit);
-
-        const banditBody = new CANNON.Body({
-          mass: 1, // Mass of 1 makes the body dynamic
-          shape: new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5)), // Adjust the shape to match the bandit model
-          position: new CANNON.Vec3(bandit.position.x, bandit.position.y + 1, bandit.position.z), // Ensure the bandit stands on the ground
-        });
-        world.addBody(banditBody);
-        banditBodiesRef.current.push(banditBody);
-
-        // Create hitbox
-        const hitboxGeometry = new THREE.BoxGeometry(1, 2, 1); // Adjust the size to match the bandit model
-        const hitboxMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, visible: false }); // Invisible hitbox
-        const hitbox = new THREE.Mesh(hitboxGeometry, hitboxMaterial);
-        hitbox.position.copy(bandit.position);
-        scene.add(hitbox);
-        hitboxesRef.current.push(hitbox);
+        
+        // ...any additional bandit hitbox or physics code...
       }
     });
 
@@ -256,38 +259,165 @@ const Wasteland = ({ volume }) => {
       setTimeout(resetCameraPosition, shakeDuration);
     };
 
+    const debugSkeletonBones = (object) => {
+      object.traverse((child) => {
+          if (child.isSkinnedMesh) {
+              console.log(`Skeleton bones for ${child.name}:`);
+              child.skeleton.bones.forEach((bone) => {
+                  console.log(`Bone: ${bone.name}, Position: ${bone.position}`);
+              });
+          }
+      });
+    };
+
+    const createRagdollForSkinnedMesh = (model, world, scene) => {
+      const bonePhysicsMap = new Map();
+      const redMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    
+      // Traverse the model to search for skinned meshes and process their skeletons
+      model.traverse((child) => {
+        if (child.isSkinnedMesh && child.skeleton) {
+          child.skeleton.bones.forEach((bone) => {
+            // Retrieve the bone's world position
+            const boneWorldPos = new THREE.Vector3();
+            bone.getWorldPosition(boneWorldPos);
+    
+            // Estimate bone size using distance to its children
+            let boneSize = 0.1; // default size
+            if (bone.children.length > 0) {
+              let maxDistance = 0;
+              bone.children.forEach((childBone) => {
+                const childPos = new THREE.Vector3();
+                childBone.getWorldPosition(childPos);
+                maxDistance = Math.max(maxDistance, boneWorldPos.distanceTo(childPos));
+              });
+              boneSize = maxDistance > 0 ? maxDistance : 0.1;
+            }
+    
+            // Define box dimensions based on estimated bone size
+            const boxWidth = boneSize;
+            const boxHeight = boneSize;
+            const boxDepth = boneSize;
+            const halfExtents = new CANNON.Vec3(boxWidth / 2, boxHeight / 2, boxDepth / 2);
+            const boxShape = new CANNON.Box(halfExtents);
+    
+            // Set mass proportional to the volume (tunable)
+            const mass = Math.pow(boneSize, 3);
+    
+            const body = new CANNON.Body({
+              mass: mass,
+              position: new CANNON.Vec3(boneWorldPos.x, boneWorldPos.y, boneWorldPos.z),
+              shape: boxShape,
+            });
+            world.addBody(body);
+    
+            // Create a visible debug box with calculated dimensions
+            const boxGeometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+            const debugMesh = new THREE.Mesh(boxGeometry, redMaterial);
+            debugMesh.position.copy(boneWorldPos);
+            scene.add(debugMesh);
+    
+            bonePhysicsMap.set(bone.name, { body, debugMesh, bone });
+          });
+        }
+      });
+    
+      // Create basic constraints between parent and child bones
+      bonePhysicsMap.forEach((childObj) => {
+        const boneParent = childObj.bone.parent;
+        if (boneParent && bonePhysicsMap.has(boneParent.name)) {
+          const parentObj = bonePhysicsMap.get(boneParent.name);
+          const childPos = new THREE.Vector3();
+          childObj.bone.getWorldPosition(childPos);
+          const parentPos = new THREE.Vector3();
+          boneParent.getWorldPosition(parentPos);
+    
+          // Calculate pivot points; adjust these offsets for fine-tuning if needed
+          const pivotA = new CANNON.Vec3(
+            childPos.x - parentPos.x,
+            childPos.y - parentPos.y,
+            childPos.z - parentPos.z
+          );
+          const pivotB = new CANNON.Vec3(0, 0, 0); // Child's local center
+    
+          const constraint = new CANNON.PointToPointConstraint(
+            parentObj.body,
+            pivotA,
+            childObj.body,
+            pivotB
+          );
+          world.addConstraint(constraint);
+        }
+      });
+    
+      return bonePhysicsMap;
+    };
+
     window.addEventListener('click', onMouseClick);
 
     const animate = () => {
       requestAnimationFrame(animate);
-
       world.step(1 / 60);
-
+    
+      // Update bandit overall transform from main physics body
       banditsRef.current.forEach((bandit, index) => {
         const banditBody = banditBodiesRef.current[index];
-        bandit.position.copy(banditBody.position);
-        bandit.quaternion.copy(banditBody.quaternion);
-
+        if (banditBody) {
+          bandit.position.copy(banditBody.position);
+          bandit.quaternion.copy(banditBody.quaternion);
+        }
+    
+        // Update hitbox if available (existing code)
         const hitbox = hitboxesRef.current[index];
-        hitbox.position.copy(bandit.position);
-        hitbox.quaternion.copy(bandit.quaternion);
+        if (hitbox) {
+          hitbox.position.copy(bandit.position);
+          hitbox.quaternion.copy(bandit.quaternion);
+        }
+    
+        // Update each bone using its physics object
+        const bonePhysicsMap = bandit.userData.bonePhysicsMap;
+        if (bonePhysicsMap) {
+          bonePhysicsMap.forEach((obj) => {
+            // Update debug box transform
+            obj.debugMesh.position.set(obj.body.position.x, obj.body.position.y, obj.body.position.z);
+            obj.debugMesh.quaternion.set(
+              obj.body.quaternion.x,
+              obj.body.quaternion.y,
+              obj.body.quaternion.z,
+              obj.body.quaternion.w
+            );
+            // Update bone local position: convert physics world pos to parent's local position
+            if (obj.bone.parent) {
+              // Update parent's world matrix before converting
+              obj.bone.parent.updateMatrixWorld();
+              const localPos = obj.bone.parent.worldToLocal(
+                new THREE.Vector3(obj.body.position.x, obj.body.position.y, obj.body.position.z)
+              );
+              obj.bone.position.copy(localPos);
+              // Copy the quaternion directly – you might need to adjust this further for a natural rotation
+              obj.bone.quaternion.copy(obj.body.quaternion);
+            } else {
+              obj.bone.position.set(obj.body.position.x, obj.body.position.y, obj.body.position.z);
+              obj.bone.quaternion.copy(obj.body.quaternion);
+            }
+          });
+        }
       });
-
-      // Update skull icon positions
+    
+      // Update skull icon positions (existing code)
       skullIconsRef.current.forEach(({ sprite, banditIndex }) => {
         const banditBody = banditBodiesRef.current[banditIndex];
         sprite.position.set(banditBody.position.x, banditBody.position.y + 2, banditBody.position.z);
       });
-
-      // Prevent camera from going underground
+    
       if (camera.position.y < 1) {
         camera.position.y = 1;
       }
-
-      controls.update(); // Update controls
+    
+      controls.update();
       renderer.render(scene, camera);
     };
-
+    
     animate();
 
     return () => {
