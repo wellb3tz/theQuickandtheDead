@@ -25,6 +25,11 @@ const hitSounds = [
   hitSound7, hitSound8, hitSound9, hitSound10, hitSound11, hitSound12
 ];
 
+// Add an array to store the blood splatter animation frames
+const bloodSplatterFrames = Array.from({ length: 30 }, (_, i) => 
+  `https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/frame${i + 1}.png`
+);
+
 const Wasteland = ({ volume }) => {
   const mountRef = useRef(null);
   const cameraRef = useRef(null);
@@ -57,6 +62,10 @@ const Wasteland = ({ volume }) => {
 
     const world = new CANNON.World();
     world.gravity.set(0, -25, 0); // Set gravity
+    
+    // Set smaller step size and more iterations for better stability
+    world.solver.iterations = 20; // Increased from default 10
+    world.solver.tolerance = 0.001; // More precise
 
     // Define collision groups for consistent detection
     const COLLISION_GROUP_GROUND = 1;
@@ -95,7 +104,7 @@ const Wasteland = ({ volume }) => {
       ragdollMaterial, 
       {
         friction: 0.8,        // Higher friction to prevent sliding
-        restitution: 0.4,     // More bounce to prevent falling through
+        restitution: 0.2,     // Less bounce to prevent instability
         contactEquationStiffness: 1e8,
         contactEquationRelaxation: 3,
         frictionEquationStiffness: 1e8  // Add friction stiffness
@@ -227,30 +236,54 @@ const Wasteland = ({ volume }) => {
           bandit.updateMatrixWorld(true);
           
           if (bandit.userData.bonePhysicsMap) {
+            // First pass: get and store all bone positions and rotations
+            const boneWorldPositions = new Map();
             bandit.userData.bonePhysicsMap.forEach((obj) => {
-              // Get the current world position of the bone
               const boneWorldPos = new THREE.Vector3();
               obj.bone.getWorldPosition(boneWorldPos);
               
-              // Get the current rotation of the bone
               const boneWorldQuat = new THREE.Quaternion();
               obj.bone.getWorldQuaternion(boneWorldQuat);
               
-              // Apply a vertical offset if needed to fix alignment
-              const verticalOffset = -0.5; // Adjust this value to fix misalignment
-              boneWorldPos.y += verticalOffset;
-              
-              // Update physics body position and rotation (will remain frozen)
-              obj.body.position.copy(boneWorldPos);
-              obj.body.quaternion.copy(boneWorldQuat);
-              
-              // Update debug mesh
-              obj.debugMesh.position.copy(boneWorldPos);
-              obj.debugMesh.quaternion.copy(boneWorldQuat);
-              
-              // Store reference position for later use
-              obj.referencePosition = boneWorldPos.clone();
-              obj.referenceQuaternion = boneWorldQuat.clone();
+              boneWorldPositions.set(obj.bone.name, {
+                position: boneWorldPos.clone(),
+                quaternion: boneWorldQuat.clone()
+              });
+            });
+            
+            // Second pass: apply positions and rotations to physics bodies
+            bandit.userData.bonePhysicsMap.forEach((obj) => {
+              const boneData = boneWorldPositions.get(obj.bone.name);
+              if (boneData) {
+                const boneWorldPos = boneData.position;
+                const boneWorldQuat = boneData.quaternion;
+                
+                // Apply a vertical offset if needed to fix alignment
+                const verticalOffset = -0.5; // Adjust this value to fix misalignment
+                boneWorldPos.y += verticalOffset;
+                
+                // Update physics body position and rotation (will remain frozen)
+                obj.body.position.copy(boneWorldPos);
+                obj.body.quaternion.copy(boneWorldQuat);
+                
+                // Store the initial quaternion for locked rotation
+                obj.body.originalQuaternion = new CANNON.Quaternion().copy(boneWorldQuat);
+                obj.body.originalPosition = new CANNON.Vec3().copy(boneWorldPos);
+                
+                // Update debug mesh
+                obj.debugMesh.position.copy(boneWorldPos);
+                obj.debugMesh.quaternion.copy(boneWorldQuat);
+                
+                // Update hit mesh if it exists
+                if (obj.hitMesh) {
+                  obj.hitMesh.position.copy(boneWorldPos);
+                  obj.hitMesh.quaternion.copy(boneWorldQuat);
+                }
+                
+                // Store reference position for later use
+                obj.referencePosition = boneWorldPos.clone();
+                obj.referenceQuaternion = boneWorldQuat.clone();
+              }
             });
           }
         }, 100); // Short delay to ensure pose is applied
@@ -292,22 +325,35 @@ const Wasteland = ({ volume }) => {
       const raycaster = new THREE.Raycaster();
       raycaster.near = 0.1;
       raycaster.far = 1000;
+      // Set a larger threshold to make hitting easier
+      raycaster.params.Line.threshold = 0.2;
+      raycaster.params.Points.threshold = 0.2;
       raycaster.setFromCamera(mouse, cameraRef.current);
-      
-      // Create an array of just the physics debug meshes to test for intersections
+
+      // Create an array of meshes to test for intersections
       const physicsMeshes = [];
-      banditsRef.current.forEach(bandit => {
+      banditsRef.current.forEach((bandit, banditIndex) => {
         const bonePhysicsMap = bandit.userData.bonePhysicsMap;
         if (bonePhysicsMap) {
           bonePhysicsMap.forEach(physicsObj => {
+            // Skip neutral_bone - hide and disable it
+            if (physicsObj.bone.name === 'neutral_bone') return;
+            
             if (physicsObj.debugMesh) {
               physicsMeshes.push(physicsObj.debugMesh);
+              physicsObj.debugMesh.userData.banditIndex = banditIndex;
+            }
+            
+            // Add the larger hit mesh for better collision detection
+            if (physicsObj.hitMesh) {
+              physicsMeshes.push(physicsObj.hitMesh);
+              physicsObj.hitMesh.userData.banditIndex = banditIndex;
             }
           });
         }
       });
       
-      // Only check intersections with physics meshes
+      // Check for intersections with any part of the model
       const intersects = raycaster.intersectObjects(physicsMeshes);
       if (intersects.length > 0) {
         const intersect = intersects[0];
@@ -316,17 +362,43 @@ const Wasteland = ({ volume }) => {
         // Find the bone or debug mesh that was hit
         let hitBone = null;
         let hitObject = intersect.object;
+        let hitBandit = null;
         let hitBoneName = null;
         
         if (hitObject.userData.bonePhysics) {
           hitBone = hitObject.userData.bonePhysics;
           hitBoneName = hitBone.bone.name;
+          hitBandit = hitBone.bandit;
+        }
+
+        // If we didn't find a specific bone, use the raycaster to find the bandit that was clicked
+        if (!hitBandit && hitObject.userData.banditIndex !== undefined) {
+          hitBandit = banditsRef.current[hitObject.userData.banditIndex];
         }
         
-        if (hitBone) {
-          // Find which bandit this bone belongs to
-          const hitBandit = hitBone.bandit;
+        if (hitBandit) {
           const bonePhysicsMap = hitBandit.userData.bonePhysicsMap;
+          
+          // If we didn't find a specific bone, choose a random visible bone from this bandit
+          if (!hitBone) {
+            // Get all non-neutral bones
+            const availableBones = Array.from(bonePhysicsMap.values()).filter(
+              obj => obj.bone.name !== 'neutral_bone'
+            );
+            
+            if (availableBones.length > 0) {
+              // Choose a random bone to apply the hit to
+              const randomIndex = Math.floor(Math.random() * availableBones.length);
+              hitBone = availableBones[randomIndex];
+            }
+          }
+          
+          // Mark bandit as hit if not already hit
+          if (!hitBanditsRef.current.has(hitBandit)) {
+            hitBanditsRef.current.add(hitBandit);
+            // Set remainingBandits to 0 so the Leave area button appears
+            setRemainingBandits(0);
+          }
           
           // Unfreeze the entire ragdoll when any part is hit
           unfreezeRagdoll(bonePhysicsMap);
@@ -336,32 +408,70 @@ const Wasteland = ({ volume }) => {
           
           // Get intersection point in world space
           const intersectionPoint = intersect.point;
-          
-          // Calculate direction from camera to intersection point
-          const impulseDirection = new THREE.Vector3();
-          impulseDirection.subVectors(intersectionPoint, cameraRef.current.position).normalize();
-          
-          // Calculate impulse strength based on distance
-          const distance = cameraRef.current.position.distanceTo(intersectionPoint);
-          const impulseMagnitude = 100 * (1 / Math.max(distance, 1));
-          
-          // Create impulse vector
-          const impulse = new CANNON.Vec3(
-            impulseDirection.x * impulseMagnitude,
-            impulseDirection.y * impulseMagnitude,
-            impulseDirection.z * impulseMagnitude
-          );
-          
-          // Convert intersection point to local body space for impulse application
-          const worldPoint = new CANNON.Vec3(
-            intersectionPoint.x - hitBone.body.position.x,
-            intersectionPoint.y - hitBone.body.position.y,
-            intersectionPoint.z - hitBone.body.position.z
-          );
-          
-          // Apply impulse at the impact point
-          hitBone.body.applyImpulse(impulse, worldPoint);
-          console.log("Applied impulse:", impulse);
+  
+          // Only proceed if we have a hitBone to apply force to
+          if (hitBone) {
+            // Get the ray direction directly from the raycaster
+            // This represents the direction of the shot from the camera
+            const shotDirection = raycaster.ray.direction.clone().normalize();
+            
+            console.log("Shot direction from camera:", shotDirection);
+            
+            // This is the direction we want the impulse to be applied
+            // It's the direction the bullet would travel
+            const impulseMagnitude = 50; // Reduced from 150 for more stability
+            
+            // Create impulse vector directly from the shot direction
+            const impulse = new CANNON.Vec3(
+              shotDirection.x * impulseMagnitude,
+              shotDirection.y * impulseMagnitude,
+              shotDirection.z * impulseMagnitude
+            );
+            
+            // Convert intersection point to local body space for impulse application
+            const worldPoint = new CANNON.Vec3(
+              intersectionPoint.x - hitBone.body.position.x,
+              intersectionPoint.y - hitBone.body.position.y,
+              intersectionPoint.z - hitBone.body.position.z
+            );
+
+            // Limit the world point to be inside the body's radius
+            const maxRadius = 0.3;
+            const wpLen = worldPoint.length();
+            if (wpLen > maxRadius) {
+              worldPoint.scale(maxRadius/wpLen, worldPoint);
+            }
+            
+            // Apply impulse at the impact point in the direction of the shot
+            hitBone.body.applyImpulse(impulse, worldPoint);
+            console.log("Applied impulse in shot direction:", impulse);
+            
+            // Apply additional impulse to connected bones for more realistic effect
+            if (hitBone.constraints) {
+              hitBone.constraints.forEach(constraint => {
+                // For each connected bone, apply a smaller impulse in the same direction
+                const connectedBody = constraint.bodyA === hitBone.body ? constraint.bodyB : constraint.bodyA;
+                if (connectedBody && connectedBody !== hitBone.body) {
+                  // Apply a reduced impulse to connected parts
+                  const spreadImpulse = new CANNON.Vec3(
+                    shotDirection.x * impulseMagnitude * 0.3, // Reduced from 0.6
+                    shotDirection.y * impulseMagnitude * 0.3,
+                    shotDirection.z * impulseMagnitude * 0.3
+                  );
+                  connectedBody.applyImpulse(spreadImpulse, new CANNON.Vec3(0, 0, 0));
+                }
+              });
+            }
+            
+            // Add a small upward component to the impulse to counter gravity
+            setTimeout(() => {
+              const upwardImpulse = new CANNON.Vec3(0, impulseMagnitude * 0.2, 0); // Reduced from 0.3
+              hitBone.body.applyImpulse(upwardImpulse, new CANNON.Vec3(0, 0, 0));
+              
+              // Also reduce angular velocity for more stable movement
+              hitBone.body.angularVelocity.scale(0.3, hitBone.body.angularVelocity); // Increased damping
+            }, 20);
+          }
           
           // Play a random hit sound
           const randomIndex = Math.floor(Math.random() * hitSounds.length);
@@ -373,6 +483,10 @@ const Wasteland = ({ volume }) => {
           const skullSprite = createSkullIcon(intersectionPoint);
           sceneRef.current.add(skullSprite);
           skullIconsRef.current.push({ sprite: skullSprite, banditIndex: 0 });
+          
+          // Add blood splatter sprite at hit location
+          const bloodSprite = createBloodSplatterSprite(intersectionPoint);
+          sceneRef.current.add(bloodSprite);
           
           applyCameraShake();
           
@@ -508,6 +622,12 @@ const Wasteland = ({ volume }) => {
       model.traverse((child) => {
         if (child.isSkinnedMesh && child.skeleton) {
           child.skeleton.bones.forEach((bone) => {
+            // Skip neutral_bone - hide and disable it
+            if (bone.name === 'neutral_bone') {
+              bone.visible = false;
+              return;
+            }
+            
             const boneWorldPos = new THREE.Vector3();
             // Get world position of the bone - make sure the model matrices are updated first
             model.updateWorldMatrix(true, true);
@@ -527,25 +647,33 @@ const Wasteland = ({ volume }) => {
 
             // Define custom settings for known bones with separate x, y, z multipliers.
             const boneSettings = {
-              'Hips':           { mass: 5, xMultiplier: 1.0, yMultiplier: 1.0, zMultiplier: 1.0 },
-              'RightUpperLeg':  { mass: 5,  xMultiplier: 0.8, yMultiplier: 0.9, zMultiplier: 0.8 },
-              'RightLowerLeg':  { mass: 4,  xMultiplier: 0.7, yMultiplier: 0.8, zMultiplier: 0.7 },
-              'RightFoot':      { mass: 2,  xMultiplier: 0.5, yMultiplier: 0.4, zMultiplier: 0.6 },
-              'LeftUpperLeg':   { mass: 5,  xMultiplier: 0.8, yMultiplier: 0.9, zMultiplier: 0.8 },
-              'LeftLowerLeg':   { mass: 4,  xMultiplier: 0.7, yMultiplier: 0.8, zMultiplier: 0.7 },
-              'LeftFoot':       { mass: 2,  xMultiplier: 0.5, yMultiplier: 0.4, zMultiplier: 0.6 },
-              'Chest':          { mass: 7,  xMultiplier: 1.0, yMultiplier: 1.0, zMultiplier: 1.0 },
-              'Head':           { mass: 3,  xMultiplier: 0.8, yMultiplier: 0.8, zMultiplier: 0.8 },
-              'RightUpperArm':  { mass: 2,  xMultiplier: 0.6, yMultiplier: 0.5, zMultiplier: 0.6 },
-              'RightElbow':     { mass: 1.5,xMultiplier: 0.5, yMultiplier: 0.4, zMultiplier: 0.5 },
-              'RightHand':      { mass: 1,  xMultiplier: 0.4, yMultiplier: 0.3, zMultiplier: 0.4 },
-              'LeftUpperArm':   { mass: 2,  xMultiplier: 0.6, yMultiplier: 0.5, zMultiplier: 0.6 },
-              'LeftElbow':      { mass: 1.5,xMultiplier: 0.5, yMultiplier: 0.4, zMultiplier: 0.5 },
-              'LeftHand':       { mass: 1,  xMultiplier: 1, yMultiplier: 0.3, zMultiplier: 0.4 },
+              'Hips':           { mass: 5,  xMultiplier: 1.5, yMultiplier: 0.9, zMultiplier: 1.0 },  // Wider than tall
+              'Spine':          { mass: 4,  xMultiplier: 1.2, yMultiplier: 1.4, zMultiplier: 0.9 },  // Taller than wide
+              'Chest':          { mass: 7,  xMultiplier: 1.7, yMultiplier: 1.4, zMultiplier: 1.0 },  // Wider and taller
+              
+              // Legs - long rectangular shapes
+              'RightUpperLeg':  { mass: 5,  xMultiplier: 0.8, yMultiplier: 1.6, zMultiplier: 0.8 },  // Tall rectangle
+              'RightLowerLeg':  { mass: 4,  xMultiplier: 0.7, yMultiplier: 1.7, zMultiplier: 0.7 },  // Taller rectangle
+              'RightFoot':      { mass: 2,  xMultiplier: 1.2, yMultiplier: 0.5, zMultiplier: 1.8 },  // Longer in z direction for forward
+              'LeftUpperLeg':   { mass: 5,  xMultiplier: 0.8, yMultiplier: 1.6, zMultiplier: 0.8 },  // Tall rectangle
+              'LeftLowerLeg':   { mass: 4,  xMultiplier: 0.7, yMultiplier: 1.7, zMultiplier: 0.7 },  // Taller rectangle
+              'LeftFoot':       { mass: 2,  xMultiplier: 1.2, yMultiplier: 0.5, zMultiplier: 1.8 },  // Longer in z direction for forward
+              
+              // Arms - long thin shapes
+              'RightUpperArm':  { mass: 2,  xMultiplier: 0.7, yMultiplier: 1.4, zMultiplier: 0.7 },  // Long thin cylinder
+              'RightElbow':     { mass: 1.5,xMultiplier: 0.6, yMultiplier: 1.5, zMultiplier: 0.6 },  // Longer cylinder
+              'RightHand':      { mass: 1,  xMultiplier: 1.0, yMultiplier: 0.7, zMultiplier: 1.3 },  // Larger hand
+              'LeftUpperArm':   { mass: 2,  xMultiplier: 0.7, yMultiplier: 1.4, zMultiplier: 0.7 },  // Long thin cylinder
+              'LeftElbow':      { mass: 1.5,xMultiplier: 0.6, yMultiplier: 1.5, zMultiplier: 0.6 },  // Longer cylinder
+              'LeftHand':       { mass: 1,  xMultiplier: 1.0, yMultiplier: 0.7, zMultiplier: 1.3 },  // Larger hand
+              
+              // Head and neck
+              'Neck':           { mass: 2,  xMultiplier: 0.7, yMultiplier: 0.9, zMultiplier: 0.7 },  // Cylindrical
+              'Head':           { mass: 3,  xMultiplier: 1.8, yMultiplier: 1.8, zMultiplier: 1.8 },  // Much larger head
             };
 
             // Get the settings for the current bone, or use default values.
-            const settings = boneSettings[bone.name] || { mass: Math.pow(boneSize, 3), xMultiplier: 1, yMultiplier: 1, zMultiplier: 1 };
+            const settings = boneSettings[bone.name] || { mass: Math.pow(boneSize, 3), xMultiplier: 1.2, yMultiplier: 1.2, zMultiplier: 1.2 };
 
             const boxWidth  = boneSize * settings.xMultiplier;
             const boxHeight = boneSize * settings.yMultiplier;
@@ -599,9 +727,12 @@ const Wasteland = ({ volume }) => {
             body.initialMass = settings.mass;
             body.frozen = false;
             
-            // Add damping for more stable physics
-            body.angularDamping = 0.8;
-            body.linearDamping = 0.3;
+            // Add moderate damping for more natural movement while preventing excessive spinning
+            body.angularDamping = 0.9;  // Reduced from 0.99 to allow some rotation
+            body.linearDamping = 0.7;   // Reduced from 0.9 to allow more natural falling
+            
+            // Store initial quaternion for reference
+            body.originalQuaternion = new CANNON.Quaternion().copy(body.quaternion);
             
             world.addBody(body);
 
@@ -617,7 +748,29 @@ const Wasteland = ({ volume }) => {
               bone: bone, 
               bandit: model 
             };
-            bonePhysicsMap.set(bone.name, { body, debugMesh, bone });
+            
+            // Create a larger invisible hitbox for better hit detection
+            const hitGeometry = new THREE.BoxGeometry(
+              boxWidth * 1.3, 
+              boxHeight * 1.3, 
+              boxDepth * 1.3
+            );
+            const hitMaterial = new THREE.MeshBasicMaterial({
+              transparent: true,
+              opacity: 0.0,
+              visible: false
+            });
+            const hitMesh = new THREE.Mesh(hitGeometry, hitMaterial);
+            hitMesh.name = `hit_${bone.name}`;
+            hitMesh.position.copy(boneWorldPos);
+            hitMesh.userData.bonePhysics = { 
+              body: body, 
+              bone: bone, 
+              bandit: model 
+            };
+            scene.add(hitMesh);
+            
+            bonePhysicsMap.set(bone.name, { body, debugMesh, hitMesh, bone });
             scene.add(debugMesh);
 
             // Inside your bone loop in createRagdollForSkinnedMesh
@@ -648,45 +801,45 @@ const Wasteland = ({ volume }) => {
           // Configure joint type based on bone name
           let constraint;
           
-          // Get rotation limits based on bone type
+          // Get rotation limits based on bone type - moderate limits to allow natural movement
           const getLimits = (boneName) => {
             if (boneName.includes('Elbow') || boneName.includes('LowerLeg')) {
-              // Elbows and knees only bend in one direction
+              // Elbows and knees bend in one direction with moderate limits
               return {
-                low: { x: 0, y: -Math.PI/8, z: -Math.PI/8 },
-                high: { x: Math.PI/2, y: Math.PI/8, z: Math.PI/8 },
+                low: { x: -Math.PI/16, y: -Math.PI/8, z: -Math.PI/8 },
+                high: { x: Math.PI/1.5, y: Math.PI/8, z: Math.PI/8 },
                 collideConnected: false
               };
             } else if (boneName.includes('Arm')) {
-              // Arms need more freedom
+              // Arms need more freedom for natural falling
               return {
-                low: { x: -Math.PI/2, y: -Math.PI/4, z: -Math.PI/2 },
-                high: { x: Math.PI/2, y: Math.PI/4, z: Math.PI/2 },
+                low: { x: -Math.PI/2, y: -Math.PI/4, z: -Math.PI/3 },
+                high: { x: Math.PI/2, y: Math.PI/4, z: Math.PI/3 },
                 collideConnected: false
               };
             } else if (boneName.includes('Leg') || boneName.includes('UpperLeg')) {
-              // Legs need controlled movement
+              // Legs need moderate movement for natural falls
               return {
-                low: { x: -Math.PI/3, y: -Math.PI/4, z: -Math.PI/4 },
-                high: { x: Math.PI/3, y: Math.PI/4, z: Math.PI/4 },
+                low: { x: -Math.PI/3, y: -Math.PI/6, z: -Math.PI/6 },
+                high: { x: Math.PI/3, y: Math.PI/6, z: Math.PI/6 },
                 collideConnected: false
               };
-            } else if (boneName.includes('Spine') || boneName.includes('Chest')) {
-              // Spine should be stiffer but allow some bending
+            } else if (boneName.includes('Spine') || boneName.includes('Chest') || boneName.includes('Hips')) {
+              // Torso should be stiffer but still bend somewhat naturally
               return {
                 low: { x: -Math.PI/6, y: -Math.PI/6, z: -Math.PI/6 },
                 high: { x: Math.PI/6, y: Math.PI/6, z: Math.PI/6 },
                 collideConnected: false
               };
             } else if (boneName.includes('Neck') || boneName.includes('Head')) {
-              // Neck/head should have limited rotation
+              // Head should have limited rotation but still natural
               return {
                 low: { x: -Math.PI/4, y: -Math.PI/4, z: -Math.PI/4 },
                 high: { x: Math.PI/4, y: Math.PI/4, z: Math.PI/4 },
                 collideConnected: false
               };
             } else if (boneName.includes('Hand') || boneName.includes('Foot')) {
-              // Hands and feet should have more freedom
+              // Hands and feet need more freedom
               return {
                 low: { x: -Math.PI/3, y: -Math.PI/3, z: -Math.PI/3 },
                 high: { x: Math.PI/3, y: Math.PI/3, z: Math.PI/3 },
@@ -717,40 +870,96 @@ const Wasteland = ({ volume }) => {
               axisB: axisB,
               // Set limits directly in the constructor
               collideConnected: false,
-              maxForce: 1e6,
+              maxForce: 5e6, // Increased from 1e6 for more stability
               // Limits in CANNON.js are set with these parameters
               low: limits.low.x,  // Lower limit
               high: limits.high.x // Upper limit
             });
             
-            // No need to call setLimits as it's not a method in CANNON.js
           } else {
-            // For other joints use a restricted ConeTwistConstraint equivalent in CANNON
+            // For other joints use a restricted but flexible constraint
             const limits = getLimits(childObj.bone.name);
             
-            // CANNON doesn't have ConeTwistConstraint, so we'll simulate with a PointToPointConstraint
-            // with smaller maxForce for flexibility, and distance constraints
+            // Use a more flexible constraint for natural falling
             constraint = new CANNON.PointToPointConstraint(
               parentObj.body,
               pivotA,
               childObj.body,
               pivotB,
-              2000 // lowered maximum force for more flexibility
+              5e4 // Increased from 2e4 for more stability
             );
             
-            // Store the constraint on both bodies for reference
-            if (!parentObj.constraints) parentObj.constraints = [];
-            if (!childObj.constraints) childObj.constraints = [];
+            // Add distance constraints to maintain structure without being too rigid
+            if (childObj.bone.name.includes('Spine') || childObj.bone.name.includes('Chest') || 
+                childObj.bone.name.includes('Hips')) {
+              // Add extra constraint for torso to keep it more intact
+              const distConstraint = new CANNON.DistanceConstraint(
+                parentObj.body,
+                childObj.body,
+                pivotA.length() * 1.05, // Reduced stretch from 1.1 to 1.05
+                5e4 // Increased from 1e4 for more stability
+              );
+              world.addConstraint(distConstraint);
+              
+              // Store for reference
+              if (!childObj.extraConstraints) childObj.extraConstraints = [];
+              childObj.extraConstraints.push(distConstraint);
+            }
             
-            parentObj.constraints.push(constraint);
-            childObj.constraints.push(constraint);
+            // Add distance constraints for all joints to prevent stretching
+            // This helps prevent the spaghetti effect
+            const distConstraint = new CANNON.DistanceConstraint(
+              parentObj.body,
+              childObj.body,
+              pivotA.length() * 1.02, // Very minimal stretch
+              2e4 // Strong but not rigid
+            );
+            world.addConstraint(distConstraint);
+            
+            if (!childObj.extraConstraints) childObj.extraConstraints = [];
+            childObj.extraConstraints.push(distConstraint);
           }
+          
+          // Store the constraint on both bodies for reference
+          if (!parentObj.constraints) parentObj.constraints = [];
+          if (!childObj.constraints) childObj.constraints = [];
+          
+          parentObj.constraints.push(constraint);
+          childObj.constraints.push(constraint);
           
           world.addConstraint(constraint);
           
           // Store the constraint type and limits for use in active posing
           childObj.jointLimits = getLimits(childObj.bone.name);
           childObj.parentBody = parentObj.body;
+
+          // Add a distance constraint between spine and hips to fix the torso in place
+          if (childObj.bone.name === 'Spine' && parentObj.bone.name === 'Hips') {
+            const spineHipsConstraint = new CANNON.DistanceConstraint(
+              parentObj.body,
+              childObj.body,
+              pivotA.length(),
+              1e5 // Very stiff constraint
+            );
+            world.addConstraint(spineHipsConstraint);
+            
+            if (!childObj.extraConstraints) childObj.extraConstraints = [];
+            childObj.extraConstraints.push(spineHipsConstraint);
+          }
+          
+          // Add a special constraint for the head to neck connection
+          if (childObj.bone.name === 'Head' && parentObj.bone.name === 'Neck') {
+            const headNeckConstraint = new CANNON.DistanceConstraint(
+              parentObj.body,
+              childObj.body,
+              pivotA.length(),
+              1e5 // Very stiff constraint
+            );
+            world.addConstraint(headNeckConstraint);
+            
+            if (!childObj.extraConstraints) childObj.extraConstraints = [];
+            childObj.extraConstraints.push(headNeckConstraint);
+          }
         }
       });
       
@@ -785,11 +994,66 @@ const Wasteland = ({ volume }) => {
     };
 
     const unfreezeRagdoll = (bonePhysicsMap) => {
+      // First, store the current relative positions and orientations
+      const boneRelativePositions = new Map();
+      
+      // Gather all relative positions before unfreezing
       bonePhysicsMap.forEach((obj) => {
         if (obj.body.frozen) {
-          obj.body.mass = obj.body.initialMass; // restore intended mass
+          // Store relative position to parent if available
+          if (obj.bone.parent) {
+            const localPos = obj.bone.parent.worldToLocal(
+              new THREE.Vector3().copy(obj.body.position)
+            );
+            boneRelativePositions.set(obj.bone.name, {
+              position: localPos,
+              quaternion: obj.body.quaternion.clone()
+            });
+          }
+        }
+      });
+      
+      // Now unfreeze while maintaining structure
+      bonePhysicsMap.forEach((obj) => {
+        if (obj.body.frozen) {
+          // Store reference state before unfreezing
+          if (!obj.body.originalQuaternion) {
+            obj.body.originalQuaternion = new CANNON.Quaternion().copy(obj.body.quaternion);
+          }
+          
+          if (!obj.body.originalPosition) {
+            obj.body.originalPosition = new CANNON.Vec3().copy(obj.body.position);
+          }
+          
+          // Unfreeze by restoring mass
+          obj.body.mass = obj.body.initialMass;
           obj.body.updateMassProperties();
           obj.body.frozen = false;
+          
+          // Reset velocity and angular velocity to prevent initial impulse
+          obj.body.velocity.set(0, 0, 0);
+          obj.body.angularVelocity.set(0, 0, 0);
+          
+          // Ensure physics body matches bone precisely
+          const boneWorldPos = new THREE.Vector3();
+          obj.bone.getWorldPosition(boneWorldPos);
+          
+          // Update positions to match bones exactly
+          obj.body.position.copy(boneWorldPos);
+          
+          // Allow small random velocity to make falling look more natural
+          const randomVel = 0.1;
+          obj.body.velocity.set(
+            (Math.random() - 0.5) * randomVel,
+            (Math.random() - 0.5) * randomVel,
+            (Math.random() - 0.5) * randomVel
+          );
+          
+          // Align debug and hit meshes
+          obj.debugMesh.position.copy(boneWorldPos);
+          if (obj.hitMesh) {
+            obj.hitMesh.position.copy(boneWorldPos);
+          }
         }
       });
     };
@@ -1087,10 +1351,14 @@ const Wasteland = ({ volume }) => {
     const animate = () => {
       requestAnimationFrame(animate);
       
-      // Calculate delta time for smoother animation (optional)
-      const deltaTime = 1/60;
+      // Calculate delta time for smoother animation
+      const deltaTime = 1/120; // Use smaller timestep for more stable physics
       
-      world.step(deltaTime);
+      // Run multiple substeps for better stability
+      const numSubSteps = 3;
+      for (let i = 0; i < numSubSteps; i++) {
+        world.step(deltaTime / numSubSteps);
+      }
     
       // Update bandit overall transform from main physics body
       banditsRef.current.forEach((bandit, index) => {
@@ -1100,17 +1368,19 @@ const Wasteland = ({ volume }) => {
           bandit.quaternion.copy(banditBody.quaternion);
         }
     
-        // Update hitbox if available (existing code)
+        // Update hitbox if available
         const hitbox = hitboxesRef.current[index];
         if (hitbox) {
           hitbox.position.copy(bandit.position);
           hitbox.quaternion.copy(bandit.quaternion);
         }
         
-        // Apply pose targeting
-        applyTargetPose(bandit, deltaTime);
+        // Only apply pose targeting when frozen or pose enabled
+        if (bandit.userData.poseEnabled) {
+          applyTargetPose(bandit, deltaTime);
+        }
         
-        // Apply balancing forces
+        // Apply balancing forces when not fully locked
         updateRagdollBalance(bandit, deltaTime);
     
         // Update each bone using its physics object
@@ -1119,6 +1389,32 @@ const Wasteland = ({ volume }) => {
           // First update the model matrix to ensure correct bone positions
           bandit.updateMatrixWorld(true);
           
+          // Fix all angular velocities to zero each frame for non-frozen bodies
+          bonePhysicsMap.forEach(obj => {
+            if (!obj.body.frozen) {
+              // Limit angular velocity instead of completely resetting it
+              const maxAngularVelocity = 2; // Reduced from 3 for more stability
+              const angVel = obj.body.angularVelocity;
+              const angVelMagnitude = Math.sqrt(
+                angVel.x * angVel.x + angVel.y * angVel.y + angVel.z * angVel.z
+              );
+              
+              if (angVelMagnitude > maxAngularVelocity) {
+                // Scale down angular velocity if it exceeds the maximum
+                const scale = maxAngularVelocity / angVelMagnitude;
+                angVel.scale(scale, angVel);
+              }
+              
+              // Reduce torque but don't eliminate it completely
+              obj.body.torque.scale(0.7, obj.body.torque); // Increased damping from 0.8
+              
+              // Apply stronger damping to prevent oscillation
+              obj.body.angularDamping = 0.95;
+              obj.body.linearDamping = 0.8;
+            }
+          });
+          
+          // Update the actual bone positions based on physics
           bonePhysicsMap.forEach((obj) => {
             // Prevent bones from falling through the ground
             if (obj.body.position.y < 0.1) {
@@ -1134,37 +1430,106 @@ const Wasteland = ({ volume }) => {
             }
             
             if (obj.body.frozen) {
-              // When frozen, make the physics bodies exactly follow the bones
+              // When frozen, make physics bodies exactly follow actual bones
               const boneWorldPos = new THREE.Vector3();
               obj.bone.getWorldPosition(boneWorldPos);
               
-              // Apply any needed correction offset
-              const verticalOffset = 0; // Same as the one used earlier
-              boneWorldPos.y += verticalOffset;
-              
-              // Update physics body and debug mesh positions
+              // Update physics body position
               obj.body.position.copy(boneWorldPos);
-              obj.debugMesh.position.copy(boneWorldPos);
               
-              // Also update bone rotations
+              // Update debug & hit mesh positions
+              obj.debugMesh.position.copy(boneWorldPos);
+              if (obj.hitMesh) {
+                obj.hitMesh.position.copy(boneWorldPos);
+              }
+              
+              // Copy bone rotation to physics body
               const worldQuat = new THREE.Quaternion();
               obj.bone.getWorldQuaternion(worldQuat);
               obj.body.quaternion.copy(worldQuat);
               obj.debugMesh.quaternion.copy(worldQuat);
+              if (obj.hitMesh) {
+                obj.hitMesh.quaternion.copy(worldQuat);
+              }
             } else {
-              // When not frozen, update debug mesh to match physics body
+              // When moving/ragdolling, update debug mesh from physics body
               obj.debugMesh.position.copy(obj.body.position);
+              
+              // Allow rotation but prevent extreme deformation
+              if (obj.body.originalQuaternion) {
+                // Get current rotation - convert to THREE.js quaternion first
+                const currentQuat = new THREE.Quaternion(
+                  obj.body.quaternion.x,
+                  obj.body.quaternion.y, 
+                  obj.body.quaternion.z,
+                  obj.body.quaternion.w
+                );
+                
+                // Also convert the original quaternion to THREE.js quaternion
+                const originalQuat = new THREE.Quaternion(
+                  obj.body.originalQuaternion.x,
+                  obj.body.originalQuaternion.y,
+                  obj.body.originalQuaternion.z,
+                  obj.body.originalQuaternion.w
+                );
+                
+                // Check if rotation has become extreme by comparing with original
+                const dotProduct = currentQuat.dot(originalQuat);
+                
+                // If rotation is extreme (dot product too negative), partially correct it
+                if (dotProduct < -0.5) {
+                  // Create a corrected quaternion that's a blend between current and original
+                  const correctedQuat = new THREE.Quaternion();
+                  originalQuat.slerp(currentQuat, 0.7, correctedQuat);
+                  
+                  // Copy back to the CANNON quaternion
+                  obj.body.quaternion.x = correctedQuat.x;
+                  obj.body.quaternion.y = correctedQuat.y;
+                  obj.body.quaternion.z = correctedQuat.z;
+                  obj.body.quaternion.w = correctedQuat.w;
+                }
+              }
+              
+              // Update visual elements with actual physics state
               obj.debugMesh.quaternion.copy(obj.body.quaternion);
               
-              // Update visual bone from physics
+              // Update hit mesh if it exists
+              if (obj.hitMesh) {
+                obj.hitMesh.position.copy(obj.body.position);
+                obj.hitMesh.quaternion.copy(obj.body.quaternion);
+              }
+              
+              // Update visual bone from physics body (position and rotation)
               if (obj.bone.parent) {
                 obj.bone.parent.updateMatrixWorld();
+                
+                // Convert physics body position to bone's local space
                 const localPos = obj.bone.parent.worldToLocal(
                   new THREE.Vector3(obj.body.position.x, obj.body.position.y, obj.body.position.z)
                 );
+                
+                // Update position
                 obj.bone.position.copy(localPos);
-                obj.bone.quaternion.copy(obj.body.quaternion);
+                
+                // Update rotation - allow physics to drive bone rotation
+                // Create a local quaternion that represents the rotation in parent space
+                const parentWorldQuat = new THREE.Quaternion();
+                obj.bone.parent.getWorldQuaternion(parentWorldQuat);
+                const worldQuat = new THREE.Quaternion(
+                  obj.body.quaternion.x,
+                  obj.body.quaternion.y,
+                  obj.body.quaternion.z,
+                  obj.body.quaternion.w
+                );
+                
+                // Calculate the local quaternion
+                const parentInverse = parentWorldQuat.clone().invert();
+                const localQuat = worldQuat.clone().premultiply(parentInverse);
+                
+                // Apply local quaternion to bone
+                obj.bone.quaternion.copy(localQuat);
               } else {
+                // For root bones without parents
                 obj.bone.position.set(obj.body.position.x, obj.body.position.y, obj.body.position.z);
                 obj.bone.quaternion.copy(obj.body.quaternion);
               }
@@ -1198,6 +1563,85 @@ const Wasteland = ({ volume }) => {
 
   const handleLeaveArea = () => {
     history.push('/looting');
+  };
+
+  // Update the createBloodSplatterSprite function to use the animation frames
+  const createBloodSplatterSprite = (position) => {
+    // Create a group to hold the animated sprite
+    const spriteGroup = new THREE.Group();
+    spriteGroup.position.set(
+      position.x + (Math.random() * 0.2 - 0.1), 
+      position.y + (Math.random() * 0.2), 
+      position.z + (Math.random() * 0.2 - 0.1)
+    );
+    
+    // Randomize scale for variety
+    const scale = 0.5 + Math.random() * 0.5;
+    
+    // Create a texture loader
+    const textureLoader = new THREE.TextureLoader();
+    
+    // Load the first frame to start with
+    const initialTexture = textureLoader.load(bloodSplatterFrames[0]);
+    const spriteMaterial = new THREE.SpriteMaterial({ 
+      map: initialTexture,
+      transparent: true,
+      alphaTest: 0.1,
+      opacity: 0.9,
+      depthTest: true,
+      depthWrite: false,
+      blending: THREE.NormalBlending
+    });
+    
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(scale, scale, scale);
+    
+    // Randomize rotation for variety
+    sprite.material.rotation = Math.random() * Math.PI * 2;
+    
+    spriteGroup.add(sprite);
+    
+    // Set up animation
+    let currentFrame = 0;
+    const frameDuration = 50; // milliseconds per frame
+    
+    const animateBloodSplatter = () => {
+      currentFrame++;
+      
+      if (currentFrame < bloodSplatterFrames.length) {
+        // Load the next frame
+        textureLoader.load(bloodSplatterFrames[currentFrame], (texture) => {
+          sprite.material.map = texture;
+          sprite.material.needsUpdate = true;
+          
+          // Schedule the next frame
+          setTimeout(animateBloodSplatter, frameDuration);
+        });
+      } else {
+        // Animation complete - fade out the sprite
+        const fadeOutDuration = 500; // milliseconds
+        const fadeStep = sprite.material.opacity / (fadeOutDuration / 30); // 30ms per fade step
+        
+        const fadeOut = () => {
+          if (sprite.material.opacity > 0) {
+            sprite.material.opacity -= fadeStep;
+            setTimeout(fadeOut, 30);
+          } else {
+            // Remove the sprite when fully faded
+            spriteGroup.remove(sprite);
+            sprite.material.dispose();
+            sprite.geometry.dispose();
+          }
+        };
+        
+        fadeOut();
+      }
+    };
+    
+    // Start the animation
+    setTimeout(animateBloodSplatter, frameDuration);
+    
+    return spriteGroup;
   };
 
   return (
