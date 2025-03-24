@@ -164,7 +164,7 @@ const Wasteland = ({ volume }) => {
       for (let i = 0; i < 1; i++) { // Single bandit
         const bandit = gltf.scene.clone();
 
-        // Initialize ragdoll physics for the band's skeleton
+        // Initialize ragdoll physics for the bandit's skeleton
         const bonePhysicsMap = createRagdollForSkinnedMesh(bandit, world, scene);
         bandit.userData.bonePhysicsMap = bonePhysicsMap;
         if(bonePhysicsMap.size === 0) {
@@ -183,10 +183,18 @@ const Wasteland = ({ volume }) => {
         // Position the bandit higher above the ground initially
         bandit.position.set(Math.random() * 10 - 5, 3, Math.random() * 10 - 5);
         
-        // Apply the position to all physics bodies
+        // Apply the position to all physics bodies and FREEZE IMMEDIATELY
         if (bandit.userData.bonePhysicsMap) {
           bandit.userData.bonePhysicsMap.forEach((obj) => {
             obj.body.position.y += 3; // Lift all bones 3 units up
+            
+            // FREEZE PHYSICS IMMEDIATELY to prevent any initial falling
+            obj.body.initialMass = obj.body.mass; 
+            obj.body.mass = 0; // Make it static
+            obj.body.updateMassProperties();
+            obj.body.velocity.set(0, 0, 0);
+            obj.body.angularVelocity.set(0, 0, 0);
+            obj.body.frozen = true;
             
             // Force position update for the physics body
             obj.body.updateMassProperties();
@@ -195,6 +203,9 @@ const Wasteland = ({ volume }) => {
             // Make debug meshes more visible
             obj.debugMesh.material.opacity = 0.7;
             obj.debugMesh.material.transparent = true;
+            
+            // Update debug mesh position
+            obj.debugMesh.position.copy(obj.body.position);
           });
         }
         
@@ -208,10 +219,41 @@ const Wasteland = ({ volume }) => {
         scene.add(bandit);
         banditsRef.current.push(bandit);
         
-        // Set an initial default pose
+        // Now set the pose while bodies are already frozen
+        setDefaultPose(bandit);
+        
+        // After setting the pose, align the physics bodies with the visual bones
         setTimeout(() => {
-          setDefaultPose(bandit);
-        }, 1000);
+          bandit.updateMatrixWorld(true);
+          
+          if (bandit.userData.bonePhysicsMap) {
+            bandit.userData.bonePhysicsMap.forEach((obj) => {
+              // Get the current world position of the bone
+              const boneWorldPos = new THREE.Vector3();
+              obj.bone.getWorldPosition(boneWorldPos);
+              
+              // Get the current rotation of the bone
+              const boneWorldQuat = new THREE.Quaternion();
+              obj.bone.getWorldQuaternion(boneWorldQuat);
+              
+              // Apply a vertical offset if needed to fix alignment
+              const verticalOffset = -0.5; // Adjust this value to fix misalignment
+              boneWorldPos.y += verticalOffset;
+              
+              // Update physics body position and rotation (will remain frozen)
+              obj.body.position.copy(boneWorldPos);
+              obj.body.quaternion.copy(boneWorldQuat);
+              
+              // Update debug mesh
+              obj.debugMesh.position.copy(boneWorldPos);
+              obj.debugMesh.quaternion.copy(boneWorldQuat);
+              
+              // Store reference position for later use
+              obj.referencePosition = boneWorldPos.clone();
+              obj.referenceQuaternion = boneWorldQuat.clone();
+            });
+          }
+        }, 100); // Short delay to ensure pose is applied
       }
     });
 
@@ -274,19 +316,23 @@ const Wasteland = ({ volume }) => {
         // Find the bone or debug mesh that was hit
         let hitBone = null;
         let hitObject = intersect.object;
+        let hitBoneName = null;
         
         if (hitObject.userData.bonePhysics) {
           hitBone = hitObject.userData.bonePhysics;
+          hitBoneName = hitBone.bone.name;
         }
         
         if (hitBone) {
-          // Make sure the ragdoll is unfrozen
-          banditsRef.current.forEach(bandit => {
-            const bonePhysicsMap = bandit.userData.bonePhysicsMap;
-            if (bonePhysicsMap) {
-              unfreezeRagdoll(bonePhysicsMap);
-            }
-          });
+          // Find which bandit this bone belongs to
+          const hitBandit = hitBone.bandit;
+          const bonePhysicsMap = hitBandit.userData.bonePhysicsMap;
+          
+          // Unfreeze the entire ragdoll when any part is hit
+          unfreezeRagdoll(bonePhysicsMap);
+          
+          // Disable pose control once shot
+          hitBandit.userData.poseEnabled = false;
           
           // Get intersection point in world space
           const intersectionPoint = intersect.point;
@@ -463,6 +509,8 @@ const Wasteland = ({ volume }) => {
         if (child.isSkinnedMesh && child.skeleton) {
           child.skeleton.bones.forEach((bone) => {
             const boneWorldPos = new THREE.Vector3();
+            // Get world position of the bone - make sure the model matrices are updated first
+            model.updateWorldMatrix(true, true);
             bone.getWorldPosition(boneWorldPos);
       
             // Estimate default bone size based on children distance if any are available.
@@ -537,12 +585,12 @@ const Wasteland = ({ volume }) => {
               collisionFilter = COLLISION_GROUP_GROUND | COLLISION_GROUP_BODY;
             }
 
-            // New: active from the start
+            // Create the physics body at the exact bone position
             const body = new CANNON.Body({
-              mass: settings.mass, // use the intended mass
+              mass: settings.mass,
               position: new CANNON.Vec3(boneWorldPos.x, boneWorldPos.y, boneWorldPos.z),
               shape: boxShape,
-              material: ragdollMaterial, // Add material for collision handling
+              material: ragdollMaterial,
               collisionFilterGroup: collisionGroup,
               collisionFilterMask: collisionFilter
             });
@@ -557,11 +605,12 @@ const Wasteland = ({ volume }) => {
             
             world.addBody(body);
 
+            // Debug mesh should be positioned exactly at the bone position
             const boxGeometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
-            // Create a unique material instance for each mesh by cloning the template
             const uniqueMaterial = redMaterialTemplate.clone();
             const debugMesh = new THREE.Mesh(boxGeometry, uniqueMaterial);
             debugMesh.name = `debug_${bone.name}`;
+            // Set position exactly to match the bone world position
             debugMesh.position.copy(boneWorldPos);
             debugMesh.userData.bonePhysics = { 
               body: body, 
@@ -722,6 +771,19 @@ const Wasteland = ({ volume }) => {
     };
 
     // Add this helper function inside your useEffect (or in the same scope as onMouseClick)
+    const freezeRagdoll = (bonePhysicsMap) => {
+      bonePhysicsMap.forEach((obj) => {
+        if (!obj.body.frozen) {
+          obj.body.initialMass = obj.body.mass; // Store initial mass
+          obj.body.mass = 0; // Make it static
+          obj.body.updateMassProperties();
+          obj.body.velocity.set(0, 0, 0);
+          obj.body.angularVelocity.set(0, 0, 0);
+          obj.body.frozen = true;
+        }
+      });
+    };
+
     const unfreezeRagdoll = (bonePhysicsMap) => {
       bonePhysicsMap.forEach((obj) => {
         if (obj.body.frozen) {
@@ -1054,6 +1116,9 @@ const Wasteland = ({ volume }) => {
         // Update each bone using its physics object
         const bonePhysicsMap = bandit.userData.bonePhysicsMap;
         if (bonePhysicsMap) {
+          // First update the model matrix to ensure correct bone positions
+          bandit.updateMatrixWorld(true);
+          
           bonePhysicsMap.forEach((obj) => {
             // Prevent bones from falling through the ground
             if (obj.body.position.y < 0.1) {
@@ -1068,12 +1133,30 @@ const Wasteland = ({ volume }) => {
               );
             }
             
-            // Update debug mesh regardless for visualization.
-            obj.debugMesh.position.copy(obj.body.position);
-            obj.debugMesh.quaternion.copy(obj.body.quaternion);
-            
-            // Only update the bone from physics if it has been unfrozen
-            if (!obj.body.frozen) {
+            if (obj.body.frozen) {
+              // When frozen, make the physics bodies exactly follow the bones
+              const boneWorldPos = new THREE.Vector3();
+              obj.bone.getWorldPosition(boneWorldPos);
+              
+              // Apply any needed correction offset
+              const verticalOffset = 0; // Same as the one used earlier
+              boneWorldPos.y += verticalOffset;
+              
+              // Update physics body and debug mesh positions
+              obj.body.position.copy(boneWorldPos);
+              obj.debugMesh.position.copy(boneWorldPos);
+              
+              // Also update bone rotations
+              const worldQuat = new THREE.Quaternion();
+              obj.bone.getWorldQuaternion(worldQuat);
+              obj.body.quaternion.copy(worldQuat);
+              obj.debugMesh.quaternion.copy(worldQuat);
+            } else {
+              // When not frozen, update debug mesh to match physics body
+              obj.debugMesh.position.copy(obj.body.position);
+              obj.debugMesh.quaternion.copy(obj.body.quaternion);
+              
+              // Update visual bone from physics
               if (obj.bone.parent) {
                 obj.bone.parent.updateMatrixWorld();
                 const localPos = obj.bone.parent.worldToLocal(
@@ -1084,12 +1167,6 @@ const Wasteland = ({ volume }) => {
               } else {
                 obj.bone.position.set(obj.body.position.x, obj.body.position.y, obj.body.position.z);
                 obj.bone.quaternion.copy(obj.body.quaternion);
-              }
-            } else {
-              // While frozen, restore the bone's initial transform so the mesh doesn't appear deformed.
-              if (obj.bone.userData.initialMatrix) {
-                obj.bone.matrix.copy(obj.bone.userData.initialMatrix);
-                obj.bone.matrix.decompose(obj.bone.position, obj.bone.quaternion, obj.bone.scale);
               }
             }
           });
