@@ -29,6 +29,9 @@ const Wasteland = ({ volume }) => {
   const mountRef = useRef(null);
   const cameraRef = useRef(null);
   const [remainingBandits, setRemainingBandits] = useState(1);
+  const [wireframesVisible, setWireframesVisible] = useState(true);
+  const [greyMeshesVisible, setGreyMeshesVisible] = useState(true);
+  const [skeletonHelpersVisible, setSkeletonHelpersVisible] = useState(true);
   const banditsRef = useRef([]);
   const skullIconsRef = useRef([]);
   const hitBanditsRef = useRef(new Set());
@@ -43,6 +46,59 @@ const Wasteland = ({ volume }) => {
   const banditPartsRef = useRef({});
   // Move ragdollActive ref to component level
   const ragdollActive = useRef(false);
+
+  // Add a new ref to track bone data
+  const bonesRef = useRef({});
+  const skeletonHelperRef = useRef(null);
+
+  // Add toggle functions inside the component but outside of useEffect
+  const toggleWireframes = () => {
+    const newVisibility = !wireframesVisible;
+    setWireframesVisible(newVisibility);
+    
+    // Update all wireframe visibility
+    physicsWireframesRef.current.forEach(wireframe => {
+      if (wireframe) {
+        wireframe.visible = newVisibility;
+      }
+    });
+  };
+
+  const toggleGreyMeshes = () => {
+    const newVisibility = !greyMeshesVisible;
+    setGreyMeshesVisible(newVisibility);
+    
+    // Update visibility of physics meshes (grey parts)
+    physicsObjectsRef.current.forEach(physicsObj => {
+      if (physicsObj.mesh) {
+        physicsObj.mesh.visible = newVisibility;
+      }
+    });
+  };
+
+  const toggleSkeletonHelpers = () => {
+    const newVisibility = !skeletonHelpersVisible;
+    setSkeletonHelpersVisible(newVisibility);
+    
+    // Toggle visibility of skeleton helper
+    if (skeletonHelperRef.current) {
+      skeletonHelperRef.current.visible = newVisibility;
+    }
+    
+    // Toggle visibility of bone visualization spheres
+    sceneRef.current.traverse(node => {
+      if (node.name && node.name.startsWith('boneSphere_')) {
+        node.visible = newVisibility;
+      }
+    });
+    
+    // Toggle any additional skeleton helpers
+    sceneRef.current.traverse(node => {
+      if (node instanceof THREE.SkeletonHelper) {
+        node.visible = newVisibility;
+      }
+    });
+  };
 
   useEffect(() => {
     const scene = sceneRef.current; // Use the scene variable
@@ -62,7 +118,7 @@ const Wasteland = ({ volume }) => {
     controls.enablePan = true; // Enable panning
 
     const world = new CANNON.World();
-    world.gravity.set(0, -50, 0); // Increase gravity for more dramatic falls
+    world.gravity.set(0, -25, 0); // Reduced from -50 to -25 for more natural falls
     world.broadphase = new CANNON.NaiveBroadphase(); // Set broadphase
     world.solver.iterations = 10; // More iterations for better stability
     world.defaultContactMaterial.contactEquationStiffness = 1e6;
@@ -156,6 +212,28 @@ const Wasteland = ({ volume }) => {
       // First pass: collect all meshes
       bandit.traverse((node) => {
         node.visible = true;
+        
+        // Identify and store skeleton information
+        if (node.type === 'SkinnedMesh') {
+          console.log(`Found SkinnedMesh: ${node.name} with ${node.skeleton.bones.length} bones`);
+          
+          // Create a skeleton helper for debugging
+          const skeletonHelper = new THREE.SkeletonHelper(node);
+          skeletonHelper.visible = true;
+          skeletonHelperRef.current = skeletonHelper;
+          scene.add(skeletonHelper);
+          
+          // Store bones by name for later use
+          node.skeleton.bones.forEach(bone => {
+            console.log(`Bone: ${bone.name}`);
+            bonesRef.current[bone.name] = {
+              bone: bone,
+              initialPosition: bone.position.clone(),
+              initialQuaternion: bone.quaternion.clone(),
+              initialMatrix: bone.matrix.clone()
+            };
+          });
+        }
         
         if (node.isMesh) {
           // Store mesh information with absolute world positions
@@ -841,53 +919,74 @@ const Wasteland = ({ volume }) => {
           console.warn(`Fixed ${overlaps.length} overlapping body pairs to prevent physics explosion`);
         }
         
-        // Detach meshes from hierarchy to allow independent movement
-        // This is critical - we need to remove parent-child relationships
-        // so each mesh can be independently moved by physics
-        const meshesToDetach = [];
+        // Instead of detaching meshes, we'll create a mapping between physics bodies and bones
+        const physicsToSkeleton = {};
         
-        banditsRef.current.forEach(bandit => {
-          // First collect all meshes to avoid modifying hierarchy during traversal
-          bandit.traverse(node => {
-            if (node.isMesh && node !== bandit) {
-              meshesToDetach.push(node);
-            }
-          });
+        // Create lists of bone names and physics body names for improved matching
+        const boneNames = Object.keys(bonesRef.current);
+        const physicsNames = physicsObjectsRef.current.map(obj => obj.name);
+        
+        console.log("Available bones:", boneNames);
+        console.log("Available physics bodies:", physicsNames);
+        
+        // Enhanced matching logic - try different strategies
+        physicsObjectsRef.current.forEach(physicsObj => {
+          const { name, body } = physicsObj;
           
-          // Now detach meshes from hierarchy
-          meshesToDetach.forEach(mesh => {
-            // Save current world position and rotation
-            const worldPosition = new THREE.Vector3();
-            const worldQuaternion = new THREE.Quaternion();
-            mesh.getWorldPosition(worldPosition);
-            mesh.getWorldQuaternion(worldQuaternion);
-            
-            // Remove from parent and add directly to scene
-            mesh.removeFromParent();
-            mesh.position.copy(worldPosition);
-            mesh.quaternion.copy(worldQuaternion);
-            scene.add(mesh);
-            
-            console.log(`Detached mesh ${mesh.name} from hierarchy`);
-            
-            // Find corresponding physics body and update position to match mesh
-            physicsObjectsRef.current.forEach(physicsObj => {
-              if (physicsObj.mesh === mesh) {
-                physicsObj.body.position.set(
-                  worldPosition.x,
-                  worldPosition.y,
-                  worldPosition.z
-                );
-                physicsObj.body.quaternion.set(
-                  worldQuaternion.x,
-                  worldQuaternion.y,
-                  worldQuaternion.z,
-                  worldQuaternion.w
-                );
+          // Try several matching strategies in order of specificity
+          
+          // 1. Direct name match
+          const exactMatch = boneNames.find(boneName => boneName === name);
+          if (exactMatch) {
+            console.log(`Exact match: physics "${name}" → bone "${exactMatch}"`);
+            physicsToSkeleton[name] = exactMatch;
+            return;
+          }
+          
+          // 2. Case-insensitive match
+          const caseInsensitiveMatch = boneNames.find(
+            boneName => boneName.toLowerCase() === name.toLowerCase()
+          );
+          if (caseInsensitiveMatch) {
+            console.log(`Case-insensitive match: physics "${name}" → bone "${caseInsensitiveMatch}"`);
+            physicsToSkeleton[name] = caseInsensitiveMatch;
+            return;
+          }
+          
+          // 3. Substring match (bone contains physics name or vice versa)
+          const substringMatch = boneNames.find(
+            boneName => boneName.includes(name) || name.includes(boneName)
+          );
+          if (substringMatch) {
+            console.log(`Substring match: physics "${name}" → bone "${substringMatch}"`);
+            physicsToSkeleton[name] = substringMatch;
+            return;
+          }
+          
+          // 4. Semantic matching based on body part names
+          const bodyParts = ['head', 'arm', 'leg', 'torso', 'hip', 'spine', 'shoulder', 'neck'];
+          
+          for (const part of bodyParts) {
+            if (name.toLowerCase().includes(part)) {
+              // Find bones that might represent this body part
+              const matchingBones = boneNames.filter(
+                boneName => boneName.toLowerCase().includes(part)
+              );
+              
+              if (matchingBones.length > 0) {
+                // If multiple matches, prefer the shortest name (often the most specific)
+                const bestMatch = matchingBones.sort((a, b) => a.length - b.length)[0];
+                console.log(`Semantic match: physics "${name}" → bone "${bestMatch}"`);
+                physicsToSkeleton[name] = bestMatch;
+                return;
               }
-            });
-          });
+            }
+          }
+          
+          console.warn(`No bone match found for physics body "${name}"`);
         });
+        
+        console.log("Physics to skeleton mapping:", physicsToSkeleton);
         
         // Temporarily remove constraints to prevent binding issues
         jointConstraints.forEach(constraint => {
@@ -898,17 +997,17 @@ const Wasteland = ({ volume }) => {
         physicsObjectsRef.current.forEach((physicsObj, index) => {
           const { body, name } = physicsObj;
           
-          // Apply mass based on body part size (approximate)
+          // Apply mass based on body part size (approximate) - adjusted for better balance
           let mass = 1; // Default mass
           
           if (name.includes('head')) {
-            mass = 2;
+            mass = 1.5; // Reduced from 2 to 1.5
           } else if (name.includes('torso')) {
-            mass = 5;
+            mass = 3; // Reduced from 5 to 3
           } else if (name.includes('arm')) {
-            mass = 1.5;
+            mass = 1; // Reduced from 1.5 to 1
           } else if (name.includes('leg')) {
-            mass = 2;
+            mass = 1.5; // Reduced from 2 to 1.5
           }
           
           console.log(`Setting mass of ${name} to ${mass}`);
@@ -920,7 +1019,7 @@ const Wasteland = ({ volume }) => {
           
           // Add MUCH gentler initial forces - dramatically reduced from previous values
           const randomForce = new CANNON.Vec3(
-            (Math.random() - 0.5) * 5, // Reduced from 500 to 5
+            (Math.random() - 0.5) * 5, 
             (Math.random() - 0.5) * 5,
             (Math.random() - 0.5) * 5
           );
@@ -928,8 +1027,16 @@ const Wasteland = ({ volume }) => {
           // Apply gentle force at center of mass
           body.applyLocalForce(randomForce, new CANNON.Vec3(0, 0, 0));
           
-          // Apply a mild downward force - reduced from -300 to -10
+          // Apply a mild downward force
           body.applyLocalForce(new CANNON.Vec3(0, -10, 0), new CANNON.Vec3(0, 0, 0));
+          
+          // Add random rotation to prevent predictable face-planting
+          const randomTorque = new CANNON.Vec3(
+            (Math.random() - 0.5) * 5,
+            (Math.random() - 0.5) * 5,
+            (Math.random() - 0.5) * 5
+          );
+          body.angularVelocity.set(randomTorque.x, randomTorque.y, randomTorque.z);
           
           // Wake up the body (needed for static->dynamic transition)
           body.wakeUp();
@@ -939,6 +1046,11 @@ const Wasteland = ({ volume }) => {
           body.allowSleep = false;
           
           console.log(`Activated physics body for ${name} with mass ${mass}`);
+        });
+        
+        // Store the mapping for later use
+        physicsObjectsRef.current.forEach(physicsObj => {
+          physicsObj.boneName = physicsToSkeleton[physicsObj.name];
         });
         
         // Re-add constraints after making bodies dynamic
@@ -952,18 +1064,25 @@ const Wasteland = ({ volume }) => {
         // Apply a camera shake effect
         applyCameraShake();
         
-        // Apply a gentler initial impulse to all bodies - reduced from -300 to -5
+        // Apply a gentler initial impulse to all bodies
         physicsObjectsRef.current.forEach((physicsObj, index) => {
           const { body } = physicsObj;
+          
+          // Apply a slightly sideways impulse instead of purely downward
+          // This helps prevent consistent face-planting
+          const randomDirection = Math.random() > 0.5 ? 1 : -1;
           const impulse = new CANNON.Vec3(
-            (Math.random() - 0.5) * 1,
-            -5, // Reduced from -300 to -5
-            (Math.random() - 0.5) * 1
+            randomDirection * (1 + Math.random() * 2), // Random sideways impulse
+            -3, // Gentle downward force
+            (Math.random() - 0.5) * 2 // Small random z component
           );
           body.applyImpulse(impulse, new CANNON.Vec3(0, 0, 0));
         });
         
         console.log("Applied gentle initial falling impulses to all bodies");
+        
+        // Force skinned mesh update to ensure mesh follows bones
+        forceSkinnedMeshUpdate();
       };
 
       const createSkullIcon = (position) => {
@@ -1160,7 +1279,7 @@ const Wasteland = ({ volume }) => {
         // Update physics wireframes to match physics bodies
         if (physicsObjectsRef.current.length > 0) {
           physicsObjectsRef.current.forEach((physicsObj, index) => {
-            const { body, name, mesh } = physicsObj;
+            const { body, name, mesh, boneName } = physicsObj;
             const wireframe = physicsWireframesRef.current[index];
             
             if (wireframe && body) {
@@ -1184,6 +1303,82 @@ const Wasteland = ({ volume }) => {
                 mesh.quaternion.copy(wireframe.quaternion);
               }
               
+              // Update the corresponding bone if it exists and ragdoll is active
+              if (ragdollActive.current && boneName && bonesRef.current[boneName]) {
+                const boneData = bonesRef.current[boneName];
+                const bone = boneData.bone;
+                
+                // If we have a bone, update it to match physics
+                if (bone) {
+                  // Find the corresponding bone visualization sphere if it exists
+                  const boneSphere = scene.getObjectByName(`boneSphere_${boneName}`);
+                  if (boneSphere) {
+                    boneSphere.position.copy(new THREE.Vector3(
+                      body.position.x,
+                      body.position.y,
+                      body.position.z
+                    ));
+                  }
+                  
+                  try {
+                    // Set bone's world position and rotation to match physics body
+                    bone.matrixAutoUpdate = false; // Manual matrix update
+                    
+                    // Create a matrix from the physics body transform
+                    const bodyMatrix = new THREE.Matrix4();
+                    const bodyPos = new THREE.Vector3(body.position.x, body.position.y, body.position.z);
+                    const bodyQuat = new THREE.Quaternion(
+                      body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w
+                    );
+                    
+                    bodyMatrix.compose(bodyPos, bodyQuat, new THREE.Vector3(1, 1, 1));
+                    
+                    // If bone has a parent, convert to local space
+                    if (bone.parent) {
+                      const parentInverse = new THREE.Matrix4().copy(bone.parent.matrixWorld).invert();
+                      const localMatrix = bodyMatrix.clone().premultiply(parentInverse);
+                      
+                      // Decompose to get local position and rotation
+                      const localPos = new THREE.Vector3();
+                      const localQuat = new THREE.Quaternion();
+                      const localScale = new THREE.Vector3();
+                      localMatrix.decompose(localPos, localQuat, localScale);
+                      
+                      // Set bone local position and rotation
+                      bone.position.copy(localPos);
+                      bone.quaternion.copy(localQuat);
+                    } else {
+                      // If no parent, set directly
+                      bone.position.copy(bodyPos);
+                      bone.quaternion.copy(bodyQuat);
+                    }
+                    
+                    // Update bone matrix and mark the skeleton for update
+                    bone.updateMatrix();
+                    bone.updateMatrixWorld(true);
+                    
+                    // Find and update all skinned meshes that use this bone
+                    banditsRef.current.forEach(bandit => {
+                      bandit.traverse(node => {
+                        if (node.type === 'SkinnedMesh' && node.skeleton) {
+                          // Force the skinned mesh to update
+                          if (node.skeleton.bones.includes(bone)) {
+                            node.skeleton.update();
+                            // Force material update
+                            if (node.material) {
+                              node.material.needsUpdate = true;
+                            }
+                            node.normalizeSkinWeights();
+                          }
+                        }
+                      });
+                    });
+                  } catch (error) {
+                    console.error(`Error updating bone ${boneName}:`, error);
+                  }
+                }
+              }
+              
               // Debug: Log if a body is still static after activation
               if (ragdollActive.current && body.mass === 0) {
                 console.warn(`Body ${name} is still static after ragdoll activation!`);
@@ -1195,6 +1390,43 @@ const Wasteland = ({ volume }) => {
               }
             }
           });
+        }
+        
+        // After all individual bone updates, perform a full skeleton update on all skinned meshes
+        if (ragdollActive.current) {
+          // Update all skinned meshes to reflect bone changes
+          banditsRef.current.forEach(bandit => {
+            bandit.traverse(node => {
+              if (node.type === 'SkinnedMesh') {
+                // First update all bones in the skeleton
+                if (node.skeleton) {
+                  node.skeleton.bones.forEach(bone => {
+                    bone.updateMatrix();
+                    bone.updateMatrixWorld(true);
+                  });
+                  
+                  // Then update the skeleton itself
+                  node.skeleton.update();
+                }
+                
+                // Force the skinned mesh to update
+                node.normalizeSkinWeights();
+                if (node.material) {
+                  node.material.needsUpdate = true;
+                }
+              }
+            });
+          });
+          
+          // Update the entire scene graph to ensure all transformations are applied
+          scene.updateMatrixWorld(true);
+        }
+        
+        // Update skeleton helper if it exists
+        if (skeletonHelperRef.current) {
+          // SkeletonHelper automatically updates during rendering
+          // No need to call update() directly
+          skeletonHelperRef.current.visible = true; // Ensure it's visible
         }
         
         // Update skull icon positions - now using banditId reference
@@ -1232,15 +1464,200 @@ const Wasteland = ({ volume }) => {
     (error) => {
       console.error('Error loading model:', error);
     });
+
+    // Add this function after loading the bandit model to debug the bones
+    const debugBones = () => {
+      console.log("Debugging bone structure...");
+      
+      // First, find all skinned meshes
+      banditsRef.current.forEach(bandit => {
+        let skinnedMeshes = [];
+        
+        bandit.traverse(node => {
+          if (node.type === 'SkinnedMesh') {
+            skinnedMeshes.push(node);
+            console.log(`SkinnedMesh: ${node.name} (${node.skeleton.bones.length} bones)`);
+          }
+        });
+        
+        // Analyze and visualize each bone
+        skinnedMeshes.forEach(mesh => {
+          mesh.skeleton.bones.forEach((bone, index) => {
+            console.log(`Bone ${index}: ${bone.name} (parent: ${bone.parent ? bone.parent.name : 'none'})`);
+            
+            // Create a small sphere to visualize the bone position
+            const boneSphere = new THREE.Mesh(
+              new THREE.SphereGeometry(0.02, 8, 8),
+              new THREE.MeshBasicMaterial({ color: 0xff0000 })
+            );
+            
+            // Calculate world position of the bone
+            const boneWorldPos = new THREE.Vector3();
+            bone.getWorldPosition(boneWorldPos);
+            
+            boneSphere.position.copy(boneWorldPos);
+            boneSphere.name = `boneSphere_${bone.name}`;
+            scene.add(boneSphere);
+          });
+        });
+      });
+    };
+
+    // Call this function to debug
+    setTimeout(debugBones, 1000);
+
+    // Run this to configure mesh binding mode after model is fully loaded
+    setTimeout(() => {
+      console.log("Configuring skinned meshes for physics-driven animation");
+      
+      banditsRef.current.forEach(bandit => {
+        // Find all skinned meshes
+        const skinnedMeshes = [];
+        bandit.traverse(node => {
+          if (node.type === 'SkinnedMesh') {
+            skinnedMeshes.push(node);
+          }
+        });
+        
+        // For each skinned mesh, update the binding mode
+        skinnedMeshes.forEach(mesh => {
+          console.log(`Preparing skinned mesh: ${mesh.name}`);
+          
+          // When using physics to drive bones, "attached" mode often works better
+          mesh.bindMode = 'attached';
+          
+          // Reset bind matrices
+          mesh.bindMatrix.identity();
+          mesh.bindMatrixInverse.identity();
+          
+          // Make sure the mesh is visible
+          mesh.visible = true;
+          
+          // Ensure the material is properly set up
+          if (mesh.material) {
+            mesh.material.skinning = true;
+            mesh.material.needsUpdate = true;
+          }
+          
+          // Update the skeleton's inverse matrices
+          if (mesh.skeleton) {
+            mesh.skeleton.calculateInverses();
+            mesh.skeleton.update();
+          }
+        });
+      });
+    }, 1500);
+
+    // Add a helper function to visualize skinned mesh connections
+    // Add this after forceSkinnedMeshUpdate
+    const debugSkinning = () => {
+      console.log("Debugging skinning weights and connections...");
+      
+      banditsRef.current.forEach(bandit => {
+        bandit.traverse(node => {
+          if (node.type === 'SkinnedMesh') {
+            console.log(`SkinnedMesh: ${node.name}`);
+            
+            // Check skinning attributes
+            if (node.geometry && node.geometry.attributes) {
+              if (node.geometry.attributes.skinWeight) {
+                console.log(`  Has skin weights: ${node.geometry.attributes.skinWeight.count} values`);
+              } else {
+                console.warn(`  Missing skin weights!`);
+              }
+              
+              if (node.geometry.attributes.skinIndex) {
+                console.log(`  Has skin indices: ${node.geometry.attributes.skinIndex.count} values`);
+              } else {
+                console.warn(`  Missing skin indices!`);
+              }
+            }
+            
+            // Check skeleton
+            if (node.skeleton) {
+              console.log(`  Skeleton has ${node.skeleton.bones.length} bones`);
+              
+              // Log first few bones to verify
+              node.skeleton.bones.slice(0, 3).forEach((bone, i) => {
+                console.log(`  Bone ${i}: ${bone.name}`);
+              });
+            } else {
+              console.warn(`  Missing skeleton!`);
+            }
+            
+            // Create a helper to visualize the binding
+            try {
+              // Create special color-coded skeleton helper
+              const helper = new THREE.SkeletonHelper(node);
+              helper.material.linewidth = 3;
+              helper.visible = true;
+              scene.add(helper);
+              console.log(`  Added color-coded skeleton helper`);
+            } catch (error) {
+              console.error(`  Error creating skeleton helper:`, error);
+            }
+          }
+        });
+      });
+    };
+
+    // Call this function after a short delay to analyze skinning
+    setTimeout(debugSkinning, 2000);
   }, [volume]);
 
   const handleLeaveArea = () => {
     history.push('/looting');
   };
 
+  // Add this function after the activateRagdoll function to force all skinned meshes to use matrixWorld
+  const forceSkinnedMeshUpdate = () => {
+    banditsRef.current.forEach(bandit => {
+      bandit.traverse(node => {
+        if (node.type === 'SkinnedMesh') {
+          // Force skinned mesh to use bone matrices directly
+          node.bindMode = 'attached';
+          node.bindMatrix = new THREE.Matrix4();
+          node.bindMatrixInverse = new THREE.Matrix4();
+          
+          // Ensure mesh follows its bones
+          node.skeleton.calculateInverses();
+          node.skeleton.update();
+          
+          // Force update
+          node.normalizeSkinWeights();
+          if (node.material) {
+            node.material.needsUpdate = true;
+          }
+          
+          console.log(`Configured SkinnedMesh ${node.name} for direct bone control`);
+        }
+      });
+    });
+  };
+
   return (
     <div ref={mountRef} className="wasteland-container">
       <ParticleSystem ref={particleSystemRef} scene={sceneRef.current} />
+      <div className="control-buttons">
+        <button 
+          onClick={toggleWireframes} 
+          className="toggle-button wireframe-toggle"
+        >
+          {wireframesVisible ? 'Hide' : 'Show'} Wireframes
+        </button>
+        <button 
+          onClick={toggleGreyMeshes} 
+          className="toggle-button mesh-toggle"
+        >
+          {greyMeshesVisible ? 'Hide' : 'Show'} Grey Meshes
+        </button>
+        <button 
+          onClick={toggleSkeletonHelpers} 
+          className="toggle-button skeleton-toggle"
+        >
+          {skeletonHelpersVisible ? 'Hide' : 'Show'} Skeleton
+        </button>
+      </div>
       {remainingBandits === 0 && (
         <button onClick={handleLeaveArea} className="leave-area-button">
           Leave area
