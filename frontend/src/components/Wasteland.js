@@ -147,13 +147,29 @@ const Wasteland = ({ volume }) => {
             metalness: node.material.metalness || 0.3,
             transparent: false,
             opacity: 1.0,
-            side: THREE.FrontSide, // Only render front side
+            side: THREE.DoubleSide, // Render both sides to fix surface issues
             depthTest: true,
-            depthWrite: true
+            depthWrite: true,
+            flatShading: false, // Use smooth shading
+            polygonOffset: true,
+            polygonOffsetFactor: 0,
+            polygonOffsetUnits: 0
           });
           
+          // Apply the material
           node.material = newMaterial;
           node.material.needsUpdate = true;
+          
+          // Fix normals if they're causing issues
+          if (node.geometry) {
+            node.geometry.computeVertexNormals();
+            node.geometry.computeBoundingSphere();
+            node.geometry.computeBoundingBox();
+            node.geometry.attributes.position.needsUpdate = true;
+            if (node.geometry.attributes.normal) {
+              node.geometry.attributes.normal.needsUpdate = true;
+            }
+          }
           
           // Enable shadows
           node.castShadow = true;
