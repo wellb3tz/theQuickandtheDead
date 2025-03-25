@@ -32,6 +32,7 @@ const Wasteland = ({ volume }) => {
   const [wireframesVisible, setWireframesVisible] = useState(true);
   const [greyMeshesVisible, setGreyMeshesVisible] = useState(true);
   const [skeletonHelpersVisible, setSkeletonHelpersVisible] = useState(true);
+  const [jointStiffness, setJointStiffness] = useState(0.5); // Default middle stiffness
   const banditsRef = useRef([]);
   const skullIconsRef = useRef([]);
   const hitBanditsRef = useRef(new Set());
@@ -96,6 +97,40 @@ const Wasteland = ({ volume }) => {
     sceneRef.current.traverse(node => {
       if (node instanceof THREE.SkeletonHelper) {
         node.visible = newVisibility;
+      }
+    });
+  };
+
+  // Add a stiffness control slider
+  const adjustJointStiffness = (event) => {
+    const newStiffness = parseFloat(event.target.value);
+    setJointStiffness(newStiffness);
+    
+    // Apply new stiffness to all constraints
+    if (window.jointConstraints) {
+      window.jointConstraints.forEach(constraint => {
+        // Adjust the constraint parameters based on stiffness
+        if (constraint.maxForce) {
+          constraint.maxForce = 50 + newStiffness * 100; // Scale from 50 to 150
+        }
+        
+        // Adjust the constraint angle based on stiffness
+        if (constraint.angle !== undefined) {
+          constraint.angle = Math.PI / 8 * (1 - newStiffness); // More stiffness = less angle
+        }
+        
+        // Adjust constraint damping
+        if (constraint.damping !== undefined) {
+          constraint.damping = 0.2 + newStiffness * 0.8; // Scale from 0.2 to 1.0
+        }
+      });
+    }
+    
+    // Also adjust body damping
+    physicsObjectsRef.current.forEach(physicsObj => {
+      if (physicsObj.body) {
+        physicsObj.body.linearDamping = 0.1 + newStiffness * 0.5; // Increase damping with stiffness
+        physicsObj.body.angularDamping = 0.1 + newStiffness * 0.5;
       }
     });
   };
@@ -736,6 +771,57 @@ const Wasteland = ({ volume }) => {
             jointConstraints.push(joint);
           }
         });
+        
+        // Helper function to add distance constraints
+        const addDistanceConstraints = () => {
+          const distanceConstraints = [];
+          
+          // For each physics body
+          for (let i = 0; i < physicsObjectsRef.current.length; i++) {
+            const objA = physicsObjectsRef.current[i];
+            
+            // Compare with every other body
+            for (let j = i + 1; j < physicsObjectsRef.current.length; j++) {
+              const objB = physicsObjectsRef.current[j];
+              
+              // Calculate initial distance between bodies
+              const posA = objA.body.position;
+              const posB = objB.body.position;
+              
+              const distance = Math.sqrt(
+                Math.pow(posA.x - posB.x, 2) +
+                Math.pow(posA.y - posB.y, 2) +
+                Math.pow(posA.z - posB.z, 2)
+              );
+              
+              // If they're close enough, add distance constraint
+              if (distance < 0.5) { // Only for close parts
+                console.log(`Adding distance constraint between ${objA.name} and ${objB.name} (distance: ${distance.toFixed(3)})`);
+                
+                // Create a distance constraint
+                const constraint = new CANNON.DistanceConstraint(
+                  objA.body, 
+                  objB.body, 
+                  distance, // Keep the initial distance
+                  15 // Stiffness - adjust if needed
+                );
+                
+                world.addConstraint(constraint);
+                distanceConstraints.push(constraint);
+              }
+            }
+          }
+          
+          return distanceConstraints;
+        };
+        
+        // Add distance constraints between connected parts
+        const distanceConstraints = addDistanceConstraints();
+        jointConstraints.push(...distanceConstraints);
+        console.log(`Added ${distanceConstraints.length} distance constraints`);
+        
+        // Make jointConstraints globally available to allow stiffness adjustment
+        window.jointConstraints = jointConstraints;
       };
       
       // Try to set up joints (may need adjustment based on your model)
@@ -989,9 +1075,13 @@ const Wasteland = ({ volume }) => {
         console.log("Physics to skeleton mapping:", physicsToSkeleton);
         
         // Temporarily remove constraints to prevent binding issues
-        jointConstraints.forEach(constraint => {
-          world.removeConstraint(constraint);
-        });
+        if (window.jointConstraints) {
+          window.jointConstraints.forEach(constraint => {
+            world.removeConstraint(constraint);
+          });
+        } else {
+          console.warn("No joint constraints found in window object");
+        }
         
         // For each physics body, make it dynamic by setting mass > 0
         physicsObjectsRef.current.forEach((physicsObj, index) => {
@@ -1055,10 +1145,18 @@ const Wasteland = ({ volume }) => {
         
         // Re-add constraints after making bodies dynamic
         setTimeout(() => {
-          jointConstraints.forEach(constraint => {
-            world.addConstraint(constraint);
-          });
-          console.log("Re-added joint constraints");
+          if (window.jointConstraints) {
+            window.jointConstraints.forEach(constraint => {
+              try {
+                world.addConstraint(constraint);
+              } catch (error) {
+                console.error("Error re-adding constraint:", error);
+              }
+            });
+            console.log("Re-added joint constraints");
+          } else {
+            console.warn("No joint constraints found to re-add");
+          }
         }, 50); // Short delay to allow bodies to start moving
         
         // Apply a camera shake effect
@@ -1392,8 +1490,47 @@ const Wasteland = ({ volume }) => {
           });
         }
         
-        // After all individual bone updates, perform a full skeleton update on all skinned meshes
+        // Inside the animate function, right after the physics body updates but before the skeleton helpers update
+        // Add this code to increase joint stiffness and limit extreme movements
+
+        // After the physics wireframe and bone updates, add additional stabilization
+        if (ragdollActive.current && physicsObjectsRef.current.length > 0) {
+          // Apply additional damping to physics bodies based on joint stiffness
+          physicsObjectsRef.current.forEach(physicsObj => {
+            const { body } = physicsObj;
+            
+            // Limit maximum velocities to prevent extreme stretching
+            const maxLinearVelocity = 10 * (1 - jointStiffness); // Lower for higher stiffness
+            const maxAngularVelocity = 10 * (1 - jointStiffness);
+            
+            // Clamp linear velocity if it's too high
+            const linearSpeed = body.velocity.length();
+            if (linearSpeed > maxLinearVelocity) {
+              body.velocity.scale(maxLinearVelocity / linearSpeed);
+            }
+            
+            // Clamp angular velocity if it's too high
+            const angularSpeed = body.angularVelocity.length();
+            if (angularSpeed > maxAngularVelocity) {
+              body.angularVelocity.scale(maxAngularVelocity / angularSpeed);
+            }
+            
+            // Apply additional damping at high stiffness values
+            // This helps reduce oscillation/vibration
+            if (jointStiffness > 0.7) {
+              // Higher damping for stiffer joints
+              body.linearDamping = 0.1 + jointStiffness * 0.5;
+              body.angularDamping = 0.1 + jointStiffness * 0.5;
+            }
+          });
+        }
+        
+        // In the animate function, look for this section:
         if (ragdollActive.current) {
+          // Preserve bone lengths before updating skeletons
+          preserveBoneLengths();
+          maintainBoneHierarchyIntegrity(); // Add this new call
+          
           // Update all skinned meshes to reflect bone changes
           banditsRef.current.forEach(bandit => {
             bandit.traverse(node => {
@@ -1603,6 +1740,161 @@ const Wasteland = ({ volume }) => {
 
     // Call this function after a short delay to analyze skinning
     setTimeout(debugSkinning, 2000);
+
+    // Add a more sophisticated bone constraint system after preserveBoneLengths
+    const maintainBoneHierarchyIntegrity = () => {
+      if (!window.originalBoneLengths) return;
+      
+      banditsRef.current.forEach(bandit => {
+        // First pass: collect all bones and their initial locations
+        const allBones = {};
+        const bonesByName = {};
+        
+        bandit.traverse(node => {
+          if (node.isBone) {
+            allBones[node.uuid] = {
+              bone: node,
+              worldPos: new THREE.Vector3(),
+              worldQuat: new THREE.Quaternion()
+            };
+            bonesByName[node.name] = node;
+            
+            // Store current world position/rotation
+            node.getWorldPosition(allBones[node.uuid].worldPos);
+            node.getWorldQuaternion(allBones[node.uuid].worldQuat);
+          }
+        });
+        
+        // Build bone chains - identify chains of connected bones
+        const boneChains = [];
+        
+        // Find root bones (bones without bone parents or with parents that aren't in our skeleton)
+        const rootBones = [];
+        Object.values(allBones).forEach(boneInfo => {
+          const bone = boneInfo.bone;
+          if (!bone.parent || !allBones[bone.parent.uuid]) {
+            rootBones.push(bone);
+          }
+        });
+        
+        // For each root bone, create a chain
+        rootBones.forEach(rootBone => {
+          const chain = [rootBone];
+          let currentBone = rootBone;
+          
+          // Walk down the hierarchy to build the chain
+          while (true) {
+            // Find all children of the current bone
+            const children = [];
+            Object.values(allBones).forEach(boneInfo => {
+              if (boneInfo.bone.parent === currentBone) {
+                children.push(boneInfo.bone);
+              }
+            });
+            
+            // If no children, end of chain
+            if (children.length === 0) break;
+            
+            // For simplicity, just follow the first child in each case
+            // In a full solution, we'd handle branches
+            currentBone = children[0];
+            chain.push(currentBone);
+          }
+          
+          // Only add chains with multiple bones
+          if (chain.length > 1) {
+            boneChains.push(chain);
+          }
+        });
+        
+        // Process each bone chain to constrain bones
+        boneChains.forEach(chain => {
+          // Start from the root and work down
+          for (let i = 0; i < chain.length - 1; i++) {
+            const parentBone = chain[i];
+            const childBone = chain[i + 1];
+            
+            // Get original relationship data
+            const boneData = window.originalBoneLengths[childBone.name];
+            if (!boneData) continue;
+            
+            // Get world positions
+            const parentWorldPos = new THREE.Vector3();
+            const childWorldPos = new THREE.Vector3();
+            parentBone.getWorldPosition(parentWorldPos);
+            childBone.getWorldPosition(childWorldPos);
+            
+            // Current distance
+            const currentLength = parentWorldPos.distanceTo(childWorldPos);
+            
+            // If too stretched, fix it
+            if (Math.abs(currentLength - boneData.length) > 0.05 * boneData.length) { // Allow 5% flexibility
+              // Calculate direction vector from parent to child
+              const direction = new THREE.Vector3().subVectors(childWorldPos, parentWorldPos).normalize();
+              
+              // Set corrected position at original distance from parent
+              const correctedWorldPos = parentWorldPos.clone().add(
+                direction.multiplyScalar(boneData.length)
+              );
+              
+              // Set the child's position in world space, then convert to local
+              const parent = childBone.parent;
+              if (parent) {
+                // Get parent's world transform
+                const parentWorldMatrix = new THREE.Matrix4();
+                parent.updateWorldMatrix(true, false);
+                parentWorldMatrix.copy(parent.matrixWorld);
+                
+                // Invert to get local transform
+                const parentInverseMatrix = new THREE.Matrix4().copy(parentWorldMatrix).invert();
+                
+                // Convert corrected world position to local
+                const localPos = correctedWorldPos.clone().applyMatrix4(parentInverseMatrix);
+                
+                // Apply corrected local position
+                childBone.position.copy(localPos);
+                childBone.updateMatrix();
+              }
+            }
+          }
+        });
+      });
+    };
+
+    // Call this function in the animate function, near the preserveBoneLengths call
+    // After all individual bone updates, perform a full skeleton update on all skinned meshes
+    if (ragdollActive.current) {
+      // Preserve bone lengths 
+      preserveBoneLengths();
+      maintainBoneHierarchyIntegrity();
+      
+      // Update all skinned meshes to reflect bone changes
+      banditsRef.current.forEach(bandit => {
+        bandit.traverse(node => {
+          if (node.type === 'SkinnedMesh') {
+            // First update all bones in the skeleton
+            if (node.skeleton) {
+              node.skeleton.bones.forEach(bone => {
+                bone.updateMatrix();
+                bone.updateMatrixWorld(true);
+              });
+              
+              // Then update the skeleton itself
+              node.skeleton.update();
+            }
+            
+            // Force the skinned mesh to update
+            node.normalizeSkinWeights();
+            if (node.material) {
+              node.material.needsUpdate = true;
+            }
+          }
+        });
+      });
+      
+      // Update the entire scene graph to ensure all transformations are applied
+      scene.updateMatrixWorld(true);
+    }
   }, [volume]);
 
   const handleLeaveArea = () => {
@@ -1611,6 +1903,40 @@ const Wasteland = ({ volume }) => {
 
   // Add this function after the activateRagdoll function to force all skinned meshes to use matrixWorld
   const forceSkinnedMeshUpdate = () => {
+    // First, store original bone lengths and parent-child relationships
+    const originalBoneLengths = {};
+    
+    banditsRef.current.forEach(bandit => {
+      bandit.traverse(node => {
+        if (node.type === 'SkinnedMesh' && node.skeleton) {
+          const bones = node.skeleton.bones;
+          
+          // Calculate and store original bone lengths
+          bones.forEach(bone => {
+            if (bone.parent && bone.parent.isBone) {
+              const parentWorldPos = new THREE.Vector3();
+              const boneWorldPos = new THREE.Vector3();
+              bone.parent.getWorldPosition(parentWorldPos);
+              bone.getWorldPosition(boneWorldPos);
+              
+              // Store the original length
+              const length = parentWorldPos.distanceTo(boneWorldPos);
+              originalBoneLengths[bone.name] = {
+                parent: bone.parent.name,
+                length: length
+              };
+              
+              console.log(`Bone ${bone.name} original length: ${length.toFixed(3)} units`);
+            }
+          });
+        }
+      });
+    });
+    
+    // Store the bone lengths for later use
+    window.originalBoneLengths = originalBoneLengths;
+    
+    // Original skinned mesh update logic
     banditsRef.current.forEach(bandit => {
       bandit.traverse(node => {
         if (node.type === 'SkinnedMesh') {
@@ -1630,6 +1956,63 @@ const Wasteland = ({ volume }) => {
           }
           
           console.log(`Configured SkinnedMesh ${node.name} for direct bone control`);
+        }
+      });
+    });
+  };
+
+  // Add function to preserve bone lengths during animation
+  const preserveBoneLengths = () => {
+    if (!window.originalBoneLengths) return;
+    
+    banditsRef.current.forEach(bandit => {
+      bandit.traverse(node => {
+        if (node.type === 'SkinnedMesh' && node.skeleton) {
+          const bones = node.skeleton.bones;
+          
+          // Create bone name to bone object mapping
+          const bonesByName = {};
+          bones.forEach(bone => {
+            bonesByName[bone.name] = bone;
+          });
+          
+          // Adjust bone positions to preserve lengths
+          bones.forEach(bone => {
+            const boneData = window.originalBoneLengths[bone.name];
+            if (boneData && boneData.parent && bonesByName[boneData.parent]) {
+              const parentBone = bonesByName[boneData.parent];
+              
+              // Get world positions
+              const parentWorldPos = new THREE.Vector3();
+              const boneWorldPos = new THREE.Vector3();
+              parentBone.getWorldPosition(parentWorldPos);
+              bone.getWorldPosition(boneWorldPos);
+              
+              // Current distance
+              const currentLength = parentWorldPos.distanceTo(boneWorldPos);
+              
+              // If significantly different from original, adjust
+              if (Math.abs(currentLength - boneData.length) > 0.01) {
+                // Calculate direction vector from parent to bone
+                const direction = new THREE.Vector3().subVectors(boneWorldPos, parentWorldPos).normalize();
+                
+                // Set new position at correct distance from parent
+                const correctedWorldPos = parentWorldPos.clone().add(
+                  direction.multiplyScalar(boneData.length)
+                );
+                
+                // Convert back to bone's local space
+                const parent = bone.parent;
+                const parentWorldMatrix = parent.matrixWorld.clone();
+                const parentInverseMatrix = parentWorldMatrix.invert();
+                correctedWorldPos.applyMatrix4(parentInverseMatrix);
+                
+                // Update bone local position
+                bone.position.copy(correctedWorldPos);
+                bone.updateMatrix();
+              }
+            }
+          });
         }
       });
     });
@@ -1657,6 +2040,19 @@ const Wasteland = ({ volume }) => {
         >
           {skeletonHelpersVisible ? 'Hide' : 'Show'} Skeleton
         </button>
+        <div className="stiffness-control">
+          <label htmlFor="joint-stiffness">Joint Stiffness:</label>
+          <input 
+            type="range" 
+            id="joint-stiffness" 
+            min="0" 
+            max="1" 
+            step="0.1" 
+            value={jointStiffness}
+            onChange={adjustJointStiffness}
+          />
+          <span>{Math.round(jointStiffness * 100)}%</span>
+        </div>
       </div>
       {remainingBandits === 0 && (
         <button onClick={handleLeaveArea} className="leave-area-button">
