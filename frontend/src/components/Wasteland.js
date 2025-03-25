@@ -28,7 +28,7 @@ const hitSounds = [
 const Wasteland = ({ volume }) => {
   const mountRef = useRef(null);
   const cameraRef = useRef(null);
-  const [remainingBandits, setRemainingBandits] = useState(5);
+  const [remainingBandits, setRemainingBandits] = useState(1);
   const banditsRef = useRef([]);
   const banditBodiesRef = useRef([]);
   const hitboxesRef = useRef([]);
@@ -36,7 +36,7 @@ const Wasteland = ({ volume }) => {
   const hitBanditsRef = useRef(new Set());
   const history = useHistory();
   const particleSystemRef = useRef(null);
-  const sceneRef = useRef(new THREE.Scene()); // Define the scene variable
+  const sceneRef = useRef(new THREE.Scene());
 
   useEffect(() => {
     const scene = sceneRef.current; // Use the scene variable
@@ -120,38 +120,92 @@ const Wasteland = ({ volume }) => {
 
     const loader = new GLTFLoader();
 
-    // Load bandit model
-    loader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/main/frontend/media/50backup.glb', (gltf) => {
-      for (let i = 0; i < 5; i++) {
-        const bandit = gltf.scene.clone();
-        bandit.position.set(Math.random() * 10 - 5, 0, Math.random() * 10 - 5);
-        bandit.traverse((node) => {
-          if (node.isMesh) {
-            node.castShadow = true; // Enable shadows for the bandit model
-            node.receiveShadow = true;
-            node.material.shadowSide = THREE.FrontSide;
-          }
-        });
-        scene.add(bandit);
-        banditsRef.current.push(bandit);
-
-        const banditBody = new CANNON.Body({
-          mass: 1, // Mass of 1 makes the body dynamic
-          shape: new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5)), // Adjust the shape to match the bandit model
-          position: new CANNON.Vec3(bandit.position.x, bandit.position.y + 1, bandit.position.z), // Ensure the bandit stands on the ground
-        });
-        world.addBody(banditBody);
-        banditBodiesRef.current.push(banditBody);
-
-        // Create hitbox
-        const hitboxGeometry = new THREE.BoxGeometry(1, 2, 1); // Adjust the size to match the bandit model
-        const hitboxMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, visible: false }); // Invisible hitbox
-        const hitbox = new THREE.Mesh(hitboxGeometry, hitboxMaterial);
-        hitbox.position.copy(bandit.position);
-        scene.add(hitbox);
-        hitboxesRef.current.push(hitbox);
-      }
+    // Load bandit model with proper rotation and scale
+    loader.load('https://raw.githubusercontent.com/wellb3tz/theQuickandtheDead/alternative/frontend/media/40backup.glb', (gltf) => {
+      console.log('Loading model with corrected orientation:', gltf.scene);
+      
+      // Clone the scene for our single bandit
+      const bandit = gltf.scene.clone();
+      
+      // Fix position, scale and rotation
+      bandit.position.set(0, 0, 0); // At ground level
+      bandit.scale.set(1, 1, 1); // Reset to normal scale
+      bandit.rotation.set(0, 0, 0); // Reset rotation
+      
+      // Ensure all parts are visible and fix transparency issues
+      bandit.traverse((node) => {
+        node.visible = true;
+        
+        // Fix see-through mesh materials
+        if (node.isMesh && node.material) {
+          // Create new material to fix transparency issues
+          const newMaterial = new THREE.MeshStandardMaterial({
+            color: node.material.color || 0x333333,
+            map: node.material.map,
+            normalMap: node.material.normalMap,
+            roughness: node.material.roughness || 0.7,
+            metalness: node.material.metalness || 0.3,
+            transparent: false,
+            opacity: 1.0,
+            side: THREE.FrontSide, // Only render front side
+            depthTest: true,
+            depthWrite: true
+          });
+          
+          node.material = newMaterial;
+          node.material.needsUpdate = true;
+          
+          // Enable shadows
+          node.castShadow = true;
+          node.receiveShadow = true;
+        }
+      });
+      
+      // Add to scene
+      scene.add(bandit);
+      banditsRef.current.push(bandit);
+      
+      // Create physics body and hitbox
+      const banditBody = new CANNON.Body({
+        mass: 0,
+        shape: new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5)),
+        position: new CANNON.Vec3(bandit.position.x, bandit.position.y, bandit.position.z),
+      });
+      world.addBody(banditBody);
+      banditBodiesRef.current.push(banditBody);
+      
+      // Create visible hitbox for collision detection
+      const hitboxGeometry = new THREE.BoxGeometry(1, 2, 1);
+      const hitboxMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        wireframe: true,
+        visible: true // Make hitbox visible
+      });
+      const hitbox = new THREE.Mesh(hitboxGeometry, hitboxMaterial);
+      
+      // Raise hitbox position to match the visual position of the bandit
+      hitbox.position.set(bandit.position.x, bandit.position.y + 1, bandit.position.z);
+      
+      scene.add(hitbox);
+      hitboxesRef.current.push(hitbox);
+      
+      // Also update the physics body position to match the hitbox
+      banditBody.position.set(bandit.position.x, bandit.position.y + 1, bandit.position.z);
+    },
+    (progress) => {
+      console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+    },
+    (error) => {
+      console.error('Error loading model:', error);
     });
+    
+    // Helper function to log hierarchy
+    function logHierarchy(object, indent = '') {
+      console.log(indent + '└─ ' + object.name + ' [' + object.type + ']');
+      object.children.forEach(child => {
+        logHierarchy(child, indent + '  ');
+      });
+    }
 
     // Add sunlight
     const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -174,7 +228,10 @@ const Wasteland = ({ volume }) => {
     const shadowCameraHelper = new THREE.CameraHelper(light.shadow.camera);
     scene.add(shadowCameraHelper);
 
-    camera.position.z = 5;
+    // Position camera to better view the scene
+    camera.position.set(3, 3, 5);
+    controls.target.set(0, 0, 0);
+    controls.update();
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -191,9 +248,10 @@ const Wasteland = ({ volume }) => {
         const intersectionPoint = intersects[0].point; // Get the exact intersection point
         const index = hitboxesRef.current.indexOf(hitbox);
         if (index !== -1) {
-          const banditBody = banditBodiesRef.current[index];
-          const force = new CANNON.Vec3(mouse.x * 10, 5, mouse.y * 10); // Apply force based on mouse position
-          banditBody.applyImpulse(force, banditBody.position);
+          // Remove force application (no ragdolling)
+          // const banditBody = banditBodiesRef.current[index];
+          // const force = new CANNON.Vec3(mouse.x * 10, 5, mouse.y * 10);
+          // banditBody.applyImpulse(force, banditBody.position);
 
           // Play random hit sound
           const randomHitSound = hitSounds[Math.floor(Math.random() * hitSounds.length)];
@@ -203,6 +261,7 @@ const Wasteland = ({ volume }) => {
 
           // Display skull icon above the bandit if it's the first hit
           if (!hitBanditsRef.current.has(index)) {
+            const banditBody = banditBodiesRef.current[index];
             const skullIconSprite = createSkullIcon(banditBody.position);
             scene.add(skullIconSprite);
             skullIconsRef.current.push({ sprite: skullIconSprite, banditIndex: index });
@@ -232,6 +291,7 @@ const Wasteland = ({ volume }) => {
         blending: THREE.NormalBlending
       });
       const sprite = new THREE.Sprite(spriteMaterial);
+      // Position skull above the bandit
       sprite.position.set(position.x, position.y + 2, position.z);
       sprite.scale.set(0.5, 0.5, 0.5);
       return sprite;
@@ -262,23 +322,7 @@ const Wasteland = ({ volume }) => {
       requestAnimationFrame(animate);
 
       world.step(1 / 60);
-
-      banditsRef.current.forEach((bandit, index) => {
-        const banditBody = banditBodiesRef.current[index];
-        bandit.position.copy(banditBody.position);
-        bandit.quaternion.copy(banditBody.quaternion);
-
-        const hitbox = hitboxesRef.current[index];
-        hitbox.position.copy(bandit.position);
-        hitbox.quaternion.copy(bandit.quaternion);
-      });
-
-      // Update skull icon positions
-      skullIconsRef.current.forEach(({ sprite, banditIndex }) => {
-        const banditBody = banditBodiesRef.current[banditIndex];
-        sprite.position.set(banditBody.position.x, banditBody.position.y + 2, banditBody.position.z);
-      });
-
+      
       // Prevent camera from going underground
       if (camera.position.y < 1) {
         camera.position.y = 1;
