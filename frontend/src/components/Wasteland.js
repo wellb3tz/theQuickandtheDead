@@ -29,10 +29,13 @@ const Wasteland = ({ volume }) => {
   const mountRef = useRef(null);
   const cameraRef = useRef(null);
   const [remainingBandits, setRemainingBandits] = useState(1);
-  const [wireframesVisible, setWireframesVisible] = useState(true);
-  const [greyMeshesVisible, setGreyMeshesVisible] = useState(true);
-  const [skeletonHelpersVisible, setSkeletonHelpersVisible] = useState(true);
+  const [wireframesVisible, setWireframesVisible] = useState(false); // Change to false
+  const [greyMeshesVisible, setGreyMeshesVisible] = useState(true); // Keep true
+  const [skeletonHelpersVisible, setSkeletonHelpersVisible] = useState(false); // Change to false
+  const [skinnedMeshVisible, setSkinnedMeshVisible] = useState(false); // Change to false
   const [jointStiffness, setJointStiffness] = useState(0.5); // Default middle stiffness
+  const [debugMode, setDebugMode] = useState(false); // Debug mode off by default
+  const [isLoading, setIsLoading] = useState(true); // Add loading state
   const banditsRef = useRef([]);
   const skullIconsRef = useRef([]);
   const hitBanditsRef = useRef(new Set());
@@ -132,6 +135,26 @@ const Wasteland = ({ volume }) => {
         physicsObj.body.linearDamping = 0.1 + newStiffness * 0.5; // Increase damping with stiffness
         physicsObj.body.angularDamping = 0.1 + newStiffness * 0.5;
       }
+    });
+  };
+
+  // Add toggle function for debug mode
+  const toggleDebugMode = () => {
+    setDebugMode(!debugMode);
+  };
+
+  // Add toggle function for skinned mesh visibility
+  const toggleSkinnedMesh = () => {
+    const newVisibility = !skinnedMeshVisible;
+    setSkinnedMeshVisible(newVisibility);
+    
+    // Update visibility of all skinned meshes
+    banditsRef.current.forEach(bandit => {
+      bandit.traverse(node => {
+        if (node.type === 'SkinnedMesh') {
+          node.visible = newVisibility;
+        }
+      });
     });
   };
 
@@ -254,9 +277,13 @@ const Wasteland = ({ volume }) => {
           
           // Create a skeleton helper for debugging
           const skeletonHelper = new THREE.SkeletonHelper(node);
-          skeletonHelper.visible = true;
+          skeletonHelper.visible = skeletonHelpersVisible; // Already correct
           skeletonHelperRef.current = skeletonHelper;
           scene.add(skeletonHelper);
+          
+          // Set the skinned mesh visibility according to state variable (like other visualization options)
+          node.visible = skinnedMeshVisible;
+          console.log(`Setting initial SkinnedMesh visibility: ${node.visible}`);
           
           // Store bones by name for later use
           node.skeleton.bones.forEach(bone => {
@@ -416,7 +443,7 @@ const Wasteland = ({ volume }) => {
         
         return overlaps;
       };
-
+      
       // Second pass: create physics objects for each mesh
       meshes.forEach((meshData, meshIndex) => {
         const { mesh, name, position, quaternion, scale } = meshData;
@@ -680,6 +707,7 @@ const Wasteland = ({ volume }) => {
         
         // Add wireframe to scene
         scene.add(wireframeMesh);
+        wireframeMesh.visible = wireframesVisible; // Set initial visibility
         physicsWireframesRef.current.push(wireframeMesh);
         
         console.log(`Created physics object for ${name}`);
@@ -979,7 +1007,7 @@ const Wasteland = ({ volume }) => {
       raycaster.params.Line.threshold = 0.1; // Smaller threshold for more precise line detection
       raycaster.params.Mesh.threshold = 0.01; // More precise mesh detection
       const mouse = new THREE.Vector2();
-      
+
       // Add a visual ray helper to debug hit detection
       const rayDirection = new THREE.Vector3();
       const rayOrigin = new THREE.Vector3();
@@ -1179,8 +1207,10 @@ const Wasteland = ({ volume }) => {
         
         console.log("Applied gentle initial falling impulses to all bodies");
         
-        // Force skinned mesh update to ensure mesh follows bones
+        // Force skinned mesh update to ensure mesh follows bones but don't alter visibility
         forceSkinnedMeshUpdate();
+        
+        // Note: Removed visibility enforcement code to maintain consistency with other visualization options
       };
 
       const createSkullIcon = (position) => {
@@ -1382,18 +1412,18 @@ const Wasteland = ({ volume }) => {
             
             if (wireframe && body) {
               // Always update wireframe position and rotation to match body
-              wireframe.position.copy(new THREE.Vector3(
-                body.position.x,
-                body.position.y,
-                body.position.z
-              ));
-              
-              wireframe.quaternion.copy(new THREE.Quaternion(
-                body.quaternion.x,
-                body.quaternion.y,
-                body.quaternion.z,
-                body.quaternion.w
-              ));
+                  wireframe.position.copy(new THREE.Vector3(
+                    body.position.x,
+                    body.position.y,
+                    body.position.z
+                  ));
+                  
+                  wireframe.quaternion.copy(new THREE.Quaternion(
+                    body.quaternion.x,
+                    body.quaternion.y,
+                    body.quaternion.z,
+                    body.quaternion.w
+                  ));
               
               // Update the corresponding mesh directly if it exists
               if (mesh) {
@@ -1412,10 +1442,10 @@ const Wasteland = ({ volume }) => {
                   const boneSphere = scene.getObjectByName(`boneSphere_${boneName}`);
                   if (boneSphere) {
                     boneSphere.position.copy(new THREE.Vector3(
-                      body.position.x,
-                      body.position.y,
-                      body.position.z
-                    ));
+                  body.position.x,
+                  body.position.y,
+                  body.position.z
+                ));
                   }
                   
                   try {
@@ -1467,9 +1497,9 @@ const Wasteland = ({ volume }) => {
                               node.material.needsUpdate = true;
                             }
                             node.normalizeSkinWeights();
-                          }
-                        }
-                      });
+              }
+            }
+          });
                     });
                   } catch (error) {
                     console.error(`Error updating bone ${boneName}:`, error);
@@ -1622,7 +1652,7 @@ const Wasteland = ({ volume }) => {
           mesh.skeleton.bones.forEach((bone, index) => {
             console.log(`Bone ${index}: ${bone.name} (parent: ${bone.parent ? bone.parent.name : 'none'})`);
             
-            // Create a small sphere to visualize the bone position
+            // Inside the debugBones function, update the bone sphere creation to respect the visibility state
             const boneSphere = new THREE.Mesh(
               new THREE.SphereGeometry(0.02, 8, 8),
               new THREE.MeshBasicMaterial({ color: 0xff0000 })
@@ -1634,6 +1664,7 @@ const Wasteland = ({ volume }) => {
             
             boneSphere.position.copy(boneWorldPos);
             boneSphere.name = `boneSphere_${bone.name}`;
+            boneSphere.visible = skeletonHelpersVisible; // Set initial visibility based on state
             scene.add(boneSphere);
           });
         });
@@ -1667,8 +1698,9 @@ const Wasteland = ({ volume }) => {
           mesh.bindMatrix.identity();
           mesh.bindMatrixInverse.identity();
           
-          // Make sure the mesh is visible
-          mesh.visible = true;
+          // Explicitly set visibility to match the state
+          mesh.visible = skinnedMeshVisible;
+          console.log(`Setting SkinnedMesh ${mesh.name} visibility to: ${mesh.visible}`);
           
           // Ensure the material is properly set up
           if (mesh.material) {
@@ -1727,9 +1759,9 @@ const Wasteland = ({ volume }) => {
               // Create special color-coded skeleton helper
               const helper = new THREE.SkeletonHelper(node);
               helper.material.linewidth = 3;
-              helper.visible = true;
+              helper.visible = skeletonHelpersVisible; // Already correct
               scene.add(helper);
-              console.log(`  Added color-coded skeleton helper`);
+              console.log(`  Added color-coded skeleton helper (visible: ${skeletonHelpersVisible})`);
             } catch (error) {
               console.error(`  Error creating skeleton helper:`, error);
             }
@@ -1895,6 +1927,51 @@ const Wasteland = ({ volume }) => {
       // Update the entire scene graph to ensure all transformations are applied
       scene.updateMatrixWorld(true);
     }
+
+    // Add this code near the end of the useEffect hook, after loading the model but before the animate function
+    // Call this function after a short delay to analyze skinning
+    setTimeout(debugSkinning, 2000);
+
+    // Apply initial visibility settings based on state variables
+    setTimeout(() => {
+      console.log("Verifying visibility settings and hiding loading indicator");
+      
+      // Apply wireframe visibility
+      physicsWireframesRef.current.forEach(wireframe => {
+        if (wireframe) {
+          wireframe.visible = wireframesVisible;
+        }
+      });
+      
+      // Apply skeleton helper visibility
+      if (skeletonHelperRef.current) {
+        skeletonHelperRef.current.visible = skeletonHelpersVisible;
+      }
+      
+      // Apply bone visualization spheres visibility
+      scene.traverse(node => {
+        if (node.name && node.name.startsWith('boneSphere_')) {
+          node.visible = skeletonHelpersVisible;
+        }
+        
+        if (node instanceof THREE.SkeletonHelper) {
+          node.visible = skeletonHelpersVisible;
+        }
+      });
+      
+      // Apply skinned mesh visibility
+      banditsRef.current.forEach(bandit => {
+        bandit.traverse(node => {
+          if (node.type === 'SkinnedMesh') {
+            node.visible = skinnedMeshVisible;
+          }
+        });
+      });
+      
+      // Hide loading indicator
+      setIsLoading(false);
+      
+    }, 200); // Reduced to 200ms
   }, [volume]);
 
   const handleLeaveArea = () => {
@@ -1936,7 +2013,7 @@ const Wasteland = ({ volume }) => {
     // Store the bone lengths for later use
     window.originalBoneLengths = originalBoneLengths;
     
-    // Original skinned mesh update logic
+    // Original skinned mesh update logic - but don't change visibility state
     banditsRef.current.forEach(bandit => {
       bandit.traverse(node => {
         if (node.type === 'SkinnedMesh') {
@@ -1955,7 +2032,8 @@ const Wasteland = ({ volume }) => {
             node.material.needsUpdate = true;
           }
           
-          console.log(`Configured SkinnedMesh ${node.name} for direct bone control`);
+          // Don't modify visibility - just log it
+          console.log(`Configured SkinnedMesh ${node.name} for direct bone control (visible: ${node.visible})`);
         }
       });
     });
@@ -2020,40 +2098,64 @@ const Wasteland = ({ volume }) => {
 
   return (
     <div ref={mountRef} className="wasteland-container">
-      <ParticleSystem ref={particleSystemRef} scene={sceneRef.current} />
-      <div className="control-buttons">
-        <button 
-          onClick={toggleWireframes} 
-          className="toggle-button wireframe-toggle"
-        >
-          {wireframesVisible ? 'Hide' : 'Show'} Wireframes
-        </button>
-        <button 
-          onClick={toggleGreyMeshes} 
-          className="toggle-button mesh-toggle"
-        >
-          {greyMeshesVisible ? 'Hide' : 'Show'} Grey Meshes
-        </button>
-        <button 
-          onClick={toggleSkeletonHelpers} 
-          className="toggle-button skeleton-toggle"
-        >
-          {skeletonHelpersVisible ? 'Hide' : 'Show'} Skeleton
-        </button>
-        <div className="stiffness-control">
-          <label htmlFor="joint-stiffness">Joint Stiffness:</label>
-          <input 
-            type="range" 
-            id="joint-stiffness" 
-            min="0" 
-            max="1" 
-            step="0.1" 
-            value={jointStiffness}
-            onChange={adjustJointStiffness}
-          />
-          <span>{Math.round(jointStiffness * 100)}%</span>
+      {isLoading && (
+        <div className="loading-indicator">
+          <div className="loading-text">LOADING...</div>
         </div>
-      </div>
+      )}
+      <ParticleSystem ref={particleSystemRef} scene={sceneRef.current} />
+      
+      {/* Debug button that's always visible */}
+      <button 
+        onClick={toggleDebugMode} 
+        className="debug-button"
+      >
+        {debugMode ? 'X' : 'Debug'}
+      </button>
+      
+      {/* Control buttons only visible in debug mode */}
+      {debugMode && (
+        <div className="control-buttons">
+          <button 
+            onClick={toggleWireframes} 
+            className="toggle-button wireframe-toggle"
+          >
+            {wireframesVisible ? 'Hide' : 'Show'} Wireframes
+          </button>
+          <button 
+            onClick={toggleGreyMeshes} 
+            className="toggle-button mesh-toggle"
+          >
+            {greyMeshesVisible ? 'Hide' : 'Show'} Grey Meshes
+          </button>
+          <button 
+            onClick={toggleSkeletonHelpers} 
+            className="toggle-button skeleton-toggle"
+          >
+            {skeletonHelpersVisible ? 'Hide' : 'Show'} Skeleton
+          </button>
+          <button 
+            onClick={toggleSkinnedMesh} 
+            className="toggle-button skinned-toggle"
+          >
+            {skinnedMeshVisible ? 'Hide' : 'Show'} Skin Mesh
+          </button>
+          <div className="stiffness-control">
+            <label htmlFor="joint-stiffness">Joint Stiffness:</label>
+            <input 
+              type="range" 
+              id="joint-stiffness" 
+              min="0" 
+              max="1" 
+              step="0.1" 
+              value={jointStiffness}
+              onChange={adjustJointStiffness}
+            />
+            <span>{Math.round(jointStiffness * 100)}%</span>
+          </div>
+        </div>
+      )}
+      
       {remainingBandits === 0 && (
         <button onClick={handleLeaveArea} className="leave-area-button">
           Leave area
