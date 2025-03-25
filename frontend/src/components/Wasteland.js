@@ -41,6 +41,8 @@ const Wasteland = ({ volume }) => {
   const physicsWireframesRef = useRef([]);
   // Add new ref to track which bandit each physics object belongs to
   const banditPartsRef = useRef({});
+  // Move ragdollActive ref to component level
+  const ragdollActive = useRef(false);
 
   useEffect(() => {
     const scene = sceneRef.current; // Use the scene variable
@@ -60,14 +62,26 @@ const Wasteland = ({ volume }) => {
     controls.enablePan = true; // Enable panning
 
     const world = new CANNON.World();
-    world.gravity.set(0, -25, 0); // Set gravity
+    world.gravity.set(0, -50, 0); // Increase gravity for more dramatic falls
+    world.broadphase = new CANNON.NaiveBroadphase(); // Set broadphase
+    world.solver.iterations = 10; // More iterations for better stability
+    world.defaultContactMaterial.contactEquationStiffness = 1e6;
+    world.defaultContactMaterial.contactEquationRelaxation = 3;
 
     const groundBody = new CANNON.Body({
       mass: 0, // Mass of 0 makes the body static
       shape: new CANNON.Plane(),
+      collisionFilterGroup: 1,
+      collisionFilterMask: 1
     });
     groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
     world.addBody(groundBody);
+    
+    // Add collision detection and response
+    world.addEventListener('beginContact', function(event) {
+      console.log('Collision detected', event);
+      // Optional: Add impact sounds or visual effects here
+    });
 
     // Load floor texture
     const textureLoader = new THREE.TextureLoader();
@@ -196,6 +210,100 @@ const Wasteland = ({ volume }) => {
       scene.add(bandit);
       banditsRef.current.push(bandit);
       
+      // Debug function to log mesh and physics object positions
+      const logPositions = (meshName) => {
+        let meshPos, bodyPos;
+        
+        // Find the mesh in the bandit model
+        bandit.traverse(node => {
+          if (node.isMesh && node.name === meshName) {
+            const worldPos = new THREE.Vector3();
+            node.getWorldPosition(worldPos);
+            meshPos = worldPos;
+          }
+        });
+        
+        // Find corresponding physics body
+        physicsObjectsRef.current.forEach(obj => {
+          if (obj.name === meshName) {
+            bodyPos = new THREE.Vector3(
+              obj.body.position.x,
+              obj.body.position.y,
+              obj.body.position.z
+            );
+          }
+        });
+        
+        if (meshPos && bodyPos) {
+          console.log(`${meshName} positions - Mesh: (${meshPos.x.toFixed(3)}, ${meshPos.y.toFixed(3)}, ${meshPos.z.toFixed(3)}) | Physics: (${bodyPos.x.toFixed(3)}, ${bodyPos.y.toFixed(3)}, ${bodyPos.z.toFixed(3)})`);
+          console.log(`Distance between mesh and physics: ${meshPos.distanceTo(bodyPos).toFixed(3)}`);
+        }
+      };
+      
+      // Add a helper function to establish joint constraints between physics bodies
+      const createJoint = (bodyA, bodyB, pivotA, pivotB, axisA, axisB, maxAngle) => {
+        // Create a constraint between two bodies
+        const constraint = new CANNON.ConeTwistConstraint(bodyA, bodyB, {
+          pivotA: pivotA ? new CANNON.Vec3(pivotA.x, pivotA.y, pivotA.z) : new CANNON.Vec3(0, 0, 0),
+          pivotB: pivotB ? new CANNON.Vec3(pivotB.x, pivotB.y, pivotB.z) : new CANNON.Vec3(0, 0, 0),
+          axisA: axisA ? new CANNON.Vec3(axisA.x, axisA.y, axisA.z) : new CANNON.Vec3(1, 0, 0),
+          axisB: axisB ? new CANNON.Vec3(axisB.x, axisB.y, axisB.z) : new CANNON.Vec3(1, 0, 0),
+          angle: maxAngle || Math.PI / 8,
+          twistAngle: Math.PI / 4,
+          maxForce: 50 // Limit the maximum force to prevent joint explosion
+        });
+        
+        // These make constraints more stable
+        constraint.collideConnected = false;
+        
+        world.addConstraint(constraint);
+        console.log("Created joint constraint:", constraint);
+        return constraint;
+      };
+      
+      // Create a map to store physics bodies by name for joint creation
+      const physicsBodyMap = {};
+      const jointConstraints = [];
+
+      // Add a helper function to check for physics bodies that are in the same position
+      const findOverlappingBodies = () => {
+        const overlaps = [];
+        
+        // For each body, check if any other bodies are at the same position
+        for (let i = 0; i < physicsObjectsRef.current.length; i++) {
+          const bodyA = physicsObjectsRef.current[i].body;
+          
+          for (let j = i + 1; j < physicsObjectsRef.current.length; j++) {
+            const bodyB = physicsObjectsRef.current[j].body;
+            
+            // Calculate distance between bodies
+            const distance = Math.sqrt(
+              Math.pow(bodyA.position.x - bodyB.position.x, 2) +
+              Math.pow(bodyA.position.y - bodyB.position.y, 2) +
+              Math.pow(bodyA.position.z - bodyB.position.z, 2)
+            );
+            
+            // If they're too close, record the overlap
+            if (distance < 0.001) {
+              overlaps.push({
+                bodyA: physicsObjectsRef.current[i].name,
+                bodyB: physicsObjectsRef.current[j].name,
+                distance: distance
+              });
+              
+              console.warn(`Bodies ${physicsObjectsRef.current[i].name} and ${physicsObjectsRef.current[j].name} are overlapping (distance: ${distance.toFixed(6)})`);
+              
+              // Move one of the bodies slightly to prevent physics explosion
+              bodyB.position.x += 0.01;
+              bodyB.position.y += 0.01;
+              bodyB.position.z += 0.01;
+            }
+          }
+        }
+        
+        return overlaps;
+      };
+
       // Second pass: create physics objects for each mesh
       meshes.forEach((meshData, meshIndex) => {
         const { mesh, name, position, quaternion, scale } = meshData;
@@ -305,9 +413,18 @@ const Wasteland = ({ volume }) => {
           console.log(`Created simple box physics for ${name}`);
         }
         
+        // Determine mass based on body part
+        // Start with static bodies (mass=0), we'll make them dynamic when hit
+        let mass = 0;
+        // Store original physics properties to use when activating ragdoll
+        const originalProperties = {
+          position: new CANNON.Vec3(position.x, position.y, position.z),
+          quaternion: new CANNON.Quaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w)
+        };
+        
         // Create physics body at the exact world position of the mesh
         const body = new CANNON.Body({
-          mass: 0, // Static body
+          mass: mass, // Initially static
           position: new CANNON.Vec3(
             position.x, 
             position.y, 
@@ -318,10 +435,13 @@ const Wasteland = ({ volume }) => {
             quaternion.y, 
             quaternion.z, 
             quaternion.w
-          )
+          ),
+          linearDamping: 0.01, // Add damping for smoother physics
+          angularDamping: 0.01,
+          fixedRotation: false, // Allow rotation
+          collisionFilterGroup: 1, // Main collision group
+          collisionFilterMask: 1 // Can collide with self
         });
-        
-        // We don't need to apply extra position offset since we're using world positions directly
         
         // Add the shape to the body
         body.addShape(shape);
@@ -329,13 +449,21 @@ const Wasteland = ({ volume }) => {
         // Add physics body to the world
         world.addBody(body);
         
+        // Store the body in our map for joint creation
+        physicsBodyMap[name] = {
+          body: body,
+          originalProperties: originalProperties,
+          shape: shape
+        };
+        
         // Store body with its name and bandit ID
         const physicsIndex = physicsObjectsRef.current.length;
         physicsObjectsRef.current.push({
           name: name,
           body: body,
           mesh: mesh,
-          banditId: 0  // All parts belong to the same bandit (ID 0)
+          banditId: 0,  // All parts belong to the same bandit (ID 0)
+          originalProperties: originalProperties
         });
         
         // Store which bandit this physics object belongs to
@@ -444,6 +572,210 @@ const Wasteland = ({ volume }) => {
         console.log(`Created physics object for ${name}`);
       });
       
+      // After all physics bodies are created, establish joints between connected body parts
+      // This will create a hierarchy of connected body parts
+      const setupJoints = () => {
+        // Try to set up joints between body parts based on naming conventions
+        // This is an example - you may need to adjust based on the actual model structure
+        
+        // Helper function to find connected body parts
+        const findConnectedParts = () => {
+          const connections = [];
+          
+          // Get all physics body names
+          const bodyNames = Object.keys(physicsBodyMap);
+          console.log("Available body parts for joints:", bodyNames);
+          
+          // For body parts that don't follow the naming pattern, use a different strategy
+          // Check for parts that are close to each other in space
+          for (let i = 0; i < bodyNames.length; i++) {
+            const partA = bodyNames[i];
+            
+            for (let j = i + 1; j < bodyNames.length; j++) {
+              const partB = bodyNames[j];
+              
+              // Calculate distance between parts
+              const posA = physicsBodyMap[partA].body.position;
+              const posB = physicsBodyMap[partB].body.position;
+              
+              const distance = Math.sqrt(
+                Math.pow(posA.x - posB.x, 2) +
+                Math.pow(posA.y - posB.y, 2) +
+                Math.pow(posA.z - posB.z, 2)
+              );
+              
+              console.log(`Distance between ${partA} and ${partB}: ${distance.toFixed(3)}`);
+              
+              // If they're close, assume they should be connected
+              if (distance < 0.5) { // Increased distance threshold
+                console.log(`Creating connection between ${partA} and ${partB} (distance: ${distance.toFixed(3)})`);
+                // Create a connection with default values
+                connections.push({
+                  partA: partA,
+                  partB: partB,
+                  // Create pivot points halfway between parts
+                  pivotA: { 
+                    x: (posB.x - posA.x) / 2, 
+                    y: (posB.y - posA.y) / 2, 
+                    z: (posB.z - posA.z) / 2 
+                  },
+                  pivotB: { 
+                    x: (posA.x - posB.x) / 2, 
+                    y: (posA.y - posB.y) / 2, 
+                    z: (posA.z - posB.z) / 2 
+                  },
+                  angle: Math.PI / 3 // More flexibility in joints
+                });
+              }
+            }
+          }
+          
+          return connections;
+        };
+        
+        // Find and create all joint connections
+        const connections = findConnectedParts();
+        console.log(`Setting up ${connections.length} joints between body parts`);
+        
+        // For each connection, create the actual joint constraint
+        connections.forEach(conn => {
+          if (physicsBodyMap[conn.partA] && physicsBodyMap[conn.partB]) {
+            console.log(`Creating joint between ${conn.partA} and ${conn.partB}`);
+            
+            const bodyA = physicsBodyMap[conn.partA].body;
+            const bodyB = physicsBodyMap[conn.partB].body;
+            
+            const joint = createJoint(
+              bodyA, 
+              bodyB,
+              conn.pivotA,
+              conn.pivotB,
+              null, // Use default axis
+              null,
+              conn.angle
+            );
+            
+            jointConstraints.push(joint);
+          }
+        });
+      };
+      
+      // Try to set up joints (may need adjustment based on your model)
+      setupJoints();
+      
+      // Fix initial mesh positions to match physics bodies
+      const alignMeshesWithPhysics = () => {
+        console.log("Aligning mesh positions with physics bodies...");
+        
+        // Create a map from mesh names to physics bodies
+        const nameToPhysics = {};
+        physicsObjectsRef.current.forEach(obj => {
+          if (obj.name) {
+            nameToPhysics[obj.name] = obj;
+          }
+        });
+        
+        // Traverse the model and update mesh positions to match physics
+        bandit.traverse(node => {
+          if (node.isMesh && nameToPhysics[node.name]) {
+            const physicsObj = nameToPhysics[node.name];
+            const body = physicsObj.body;
+            
+            // Get the world matrix of the parent
+            const parentWorldMatrix = new THREE.Matrix4();
+            if (node.parent) {
+              node.parent.updateWorldMatrix(true, false);
+              parentWorldMatrix.copy(node.parent.matrixWorld);
+            }
+            
+            // Calculate what the local position should be to match the physics body
+            const bodyWorldPos = new THREE.Vector3(
+              body.position.x,
+              body.position.y,
+              body.position.z
+            );
+            
+            // Convert world position to local position relative to parent
+            const parentWorldMatrixInverse = new THREE.Matrix4().copy(parentWorldMatrix).invert();
+            const localPos = bodyWorldPos.clone().applyMatrix4(parentWorldMatrixInverse);
+            
+            // Set the node's local position
+            node.position.copy(localPos);
+            
+            // Do the same for rotation (quaternion)
+            const bodyWorldQuat = new THREE.Quaternion(
+              body.quaternion.x,
+              body.quaternion.y,
+              body.quaternion.z,
+              body.quaternion.w
+            );
+            
+            // Get parent world rotation
+            const parentWorldQuat = new THREE.Quaternion();
+            parentWorldMatrix.decompose(new THREE.Vector3(), parentWorldQuat, new THREE.Vector3());
+            
+            // Calculate local rotation
+            const parentWorldQuatInverse = parentWorldQuat.clone().invert();
+            const localQuat = bodyWorldQuat.clone().premultiply(parentWorldQuatInverse);
+            
+            // Set node's local rotation
+            node.quaternion.copy(localQuat);
+            
+            console.log(`Aligned mesh ${node.name} with physics body`);
+          }
+        });
+        
+        // Update the world matrices of the model
+        bandit.updateWorldMatrix(true, true);
+        
+        // Validate alignment
+        Object.keys(nameToPhysics).forEach(name => {
+          logPositions(name);
+        });
+      };
+      
+      // Call the alignment function
+      alignMeshesWithPhysics();
+      
+      // Alternative simplified approach if the above doesn't work
+      const directlyAlignWithPhysics = () => {
+        console.log("Applying direct position alignment...");
+        
+        physicsObjectsRef.current.forEach(physicsObj => {
+          const { body, mesh, name } = physicsObj;
+          
+          if (mesh) {
+            // Move mesh directly to physics body position (world space)
+            const worldPos = new THREE.Vector3(
+              body.position.x,
+              body.position.y,
+              body.position.z
+            );
+            
+            // First remove from parent to avoid transformation issues
+            const originalParent = mesh.parent;
+            if (originalParent) {
+              mesh.removeFromParent();
+              scene.add(mesh);
+            }
+            
+            // Set position and rotation directly
+            mesh.position.copy(worldPos);
+            mesh.quaternion.set(
+              body.quaternion.x,
+              body.quaternion.y,
+              body.quaternion.z,
+              body.quaternion.w
+            );
+            
+            console.log(`Directly positioned mesh ${name}`);
+          }
+        });
+      };
+      
+      // If the first approach doesn't work, try this one
+      setTimeout(directlyAlignWithPhysics, 100);
+      
       // Helper function to log hierarchy
       function logHierarchy(object, indent = '') {
         console.log(indent + '└─ ' + object.name + ' [' + object.type + ']');
@@ -495,6 +827,181 @@ const Wasteland = ({ volume }) => {
         0xff0000 // Red color
       );
       scene.add(rayHelper);
+      
+      // Function to activate ragdoll physics
+      const activateRagdoll = () => {
+        if (ragdollActive.current) return; // Already activated
+        
+        console.log('Activating ragdoll physics!');
+        ragdollActive.current = true;
+        
+        // Check for overlapping bodies and fix them
+        const overlaps = findOverlappingBodies();
+        if (overlaps.length > 0) {
+          console.warn(`Fixed ${overlaps.length} overlapping body pairs to prevent physics explosion`);
+        }
+        
+        // Detach meshes from hierarchy to allow independent movement
+        // This is critical - we need to remove parent-child relationships
+        // so each mesh can be independently moved by physics
+        const meshesToDetach = [];
+        
+        banditsRef.current.forEach(bandit => {
+          // First collect all meshes to avoid modifying hierarchy during traversal
+          bandit.traverse(node => {
+            if (node.isMesh && node !== bandit) {
+              meshesToDetach.push(node);
+            }
+          });
+          
+          // Now detach meshes from hierarchy
+          meshesToDetach.forEach(mesh => {
+            // Save current world position and rotation
+            const worldPosition = new THREE.Vector3();
+            const worldQuaternion = new THREE.Quaternion();
+            mesh.getWorldPosition(worldPosition);
+            mesh.getWorldQuaternion(worldQuaternion);
+            
+            // Remove from parent and add directly to scene
+            mesh.removeFromParent();
+            mesh.position.copy(worldPosition);
+            mesh.quaternion.copy(worldQuaternion);
+            scene.add(mesh);
+            
+            console.log(`Detached mesh ${mesh.name} from hierarchy`);
+            
+            // Find corresponding physics body and update position to match mesh
+            physicsObjectsRef.current.forEach(physicsObj => {
+              if (physicsObj.mesh === mesh) {
+                physicsObj.body.position.set(
+                  worldPosition.x,
+                  worldPosition.y,
+                  worldPosition.z
+                );
+                physicsObj.body.quaternion.set(
+                  worldQuaternion.x,
+                  worldQuaternion.y,
+                  worldQuaternion.z,
+                  worldQuaternion.w
+                );
+              }
+            });
+          });
+        });
+        
+        // Temporarily remove constraints to prevent binding issues
+        jointConstraints.forEach(constraint => {
+          world.removeConstraint(constraint);
+        });
+        
+        // For each physics body, make it dynamic by setting mass > 0
+        physicsObjectsRef.current.forEach((physicsObj, index) => {
+          const { body, name } = physicsObj;
+          
+          // Apply mass based on body part size (approximate)
+          let mass = 1; // Default mass
+          
+          if (name.includes('head')) {
+            mass = 2;
+          } else if (name.includes('torso')) {
+            mass = 5;
+          } else if (name.includes('arm')) {
+            mass = 1.5;
+          } else if (name.includes('leg')) {
+            mass = 2;
+          }
+          
+          console.log(`Setting mass of ${name} to ${mass}`);
+          
+          // Set mass to make body dynamic - ensure this works by setting directly
+          body.type = CANNON.Body.DYNAMIC;
+          body.mass = mass;
+          body.updateMassProperties();
+          
+          // Add MUCH gentler initial forces - dramatically reduced from previous values
+          const randomForce = new CANNON.Vec3(
+            (Math.random() - 0.5) * 5, // Reduced from 500 to 5
+            (Math.random() - 0.5) * 5,
+            (Math.random() - 0.5) * 5
+          );
+          
+          // Apply gentle force at center of mass
+          body.applyLocalForce(randomForce, new CANNON.Vec3(0, 0, 0));
+          
+          // Apply a mild downward force - reduced from -300 to -10
+          body.applyLocalForce(new CANNON.Vec3(0, -10, 0), new CANNON.Vec3(0, 0, 0));
+          
+          // Wake up the body (needed for static->dynamic transition)
+          body.wakeUp();
+          
+          // Ensure body isn't frozen
+          body.sleepState = 0;
+          body.allowSleep = false;
+          
+          console.log(`Activated physics body for ${name} with mass ${mass}`);
+        });
+        
+        // Re-add constraints after making bodies dynamic
+        setTimeout(() => {
+          jointConstraints.forEach(constraint => {
+            world.addConstraint(constraint);
+          });
+          console.log("Re-added joint constraints");
+        }, 50); // Short delay to allow bodies to start moving
+        
+        // Apply a camera shake effect
+        applyCameraShake();
+        
+        // Apply a gentler initial impulse to all bodies - reduced from -300 to -5
+        physicsObjectsRef.current.forEach((physicsObj, index) => {
+          const { body } = physicsObj;
+          const impulse = new CANNON.Vec3(
+            (Math.random() - 0.5) * 1,
+            -5, // Reduced from -300 to -5
+            (Math.random() - 0.5) * 1
+          );
+          body.applyImpulse(impulse, new CANNON.Vec3(0, 0, 0));
+        });
+        
+        console.log("Applied gentle initial falling impulses to all bodies");
+      };
+
+      const createSkullIcon = (position) => {
+        const spriteMap = new THREE.TextureLoader().load(skullIcon);
+        const spriteMaterial = new THREE.SpriteMaterial({ 
+          map: spriteMap,
+          transparent: true,
+          alphaTest: 0.5,
+          depthTest: true,
+          depthWrite: false,
+          blending: THREE.NormalBlending
+        });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        // Position skull above the bandit - increased height from 2 to 3
+        sprite.position.set(position.x, position.y + 3, position.z);
+        // Reduced scale from 0.5 to 0.3
+        sprite.scale.set(0.3, 0.3, 0.3);
+        return sprite;
+      };
+
+      const applyCameraShake = () => {
+        const shakeIntensity = 0.1;
+        const shakeDuration = 100; // in milliseconds
+
+        const originalPosition = camera.position.clone();
+        const shake = () => {
+          camera.position.x = originalPosition.x + (Math.random() - 0.5) * shakeIntensity;
+          camera.position.y = originalPosition.y + (Math.random() - 0.5) * shakeIntensity;
+          camera.position.z = originalPosition.z + (Math.random() - 0.5) * shakeIntensity;
+        };
+
+        const resetCameraPosition = () => {
+          camera.position.copy(originalPosition);
+        };
+
+        shake();
+        setTimeout(resetCameraPosition, shakeDuration);
+      };
 
       const onMouseClick = (event) => {
         // Update mouse coordinates for raycaster - normalized device coordinates (-1 to +1)
@@ -561,6 +1068,60 @@ const Wasteland = ({ volume }) => {
 
               // Update remaining bandits count
               setRemainingBandits((prevCount) => prevCount - 1);
+              
+              // Activate ragdoll physics on first hit
+              activateRagdoll();
+            } else if (!ragdollActive.current) {
+              // If bandit was already hit but ragdoll not active yet, activate it
+              activateRagdoll();
+            } else {
+              // Apply an impulse force at the hit point for additional physics effect
+              const impulseStrength = 5; // Reduced from 10 for more natural movement
+              
+              // The impulse should point in the direction of the ray (from camera to hit point)
+              const impulse = new CANNON.Vec3(
+                rayDirection.x * impulseStrength,
+                rayDirection.y * impulseStrength,
+                rayDirection.z * impulseStrength
+              );
+              
+              // Apply impulse at hit point relative to body center
+              const relativePoint = new CANNON.Vec3(
+                intersectionPoint.x - physicsObj.body.position.x,
+                intersectionPoint.y - physicsObj.body.position.y,
+                intersectionPoint.z - physicsObj.body.position.z
+              );
+              
+              // Log the impulse for debugging
+              console.log(`Applying impulse of strength ${impulseStrength} at relative point:`, 
+                relativePoint.x.toFixed(2), 
+                relativePoint.y.toFixed(2), 
+                relativePoint.z.toFixed(2)
+              );
+              
+              physicsObj.body.applyImpulse(impulse, relativePoint);
+              
+              // Apply a smaller impulse to connected bodies for chain reaction effect
+              physicsObjectsRef.current.forEach((connectedObj) => {
+                if (connectedObj !== physicsObj) {
+                  const distance = Math.sqrt(
+                    Math.pow(connectedObj.body.position.x - physicsObj.body.position.x, 2) +
+                    Math.pow(connectedObj.body.position.y - physicsObj.body.position.y, 2) +
+                    Math.pow(connectedObj.body.position.z - physicsObj.body.position.z, 2)
+                  );
+                  
+                  // Only affect nearby bodies
+                  if (distance < 0.5) {
+                    const weakerImpulse = new CANNON.Vec3(
+                      impulse.x * 0.3, // 30% of original force
+                      impulse.y * 0.3,
+                      impulse.z * 0.3
+                    );
+                    
+                    connectedObj.body.applyImpulse(weakerImpulse, new CANNON.Vec3(0, 0, 0));
+                  }
+                }
+              });
             }
 
             // Trigger particle system at the exact hit point
@@ -572,49 +1133,29 @@ const Wasteland = ({ volume }) => {
         }
       };
 
-      const createSkullIcon = (position) => {
-        const spriteMap = new THREE.TextureLoader().load(skullIcon);
-        const spriteMaterial = new THREE.SpriteMaterial({ 
-          map: spriteMap,
-          transparent: true,
-          alphaTest: 0.5,
-          depthTest: true,
-          depthWrite: false,
-          blending: THREE.NormalBlending
-        });
-        const sprite = new THREE.Sprite(spriteMaterial);
-        // Position skull above the bandit - increased height from 2 to 3
-        sprite.position.set(position.x, position.y + 3, position.z);
-        // Reduced scale from 0.5 to 0.3
-        sprite.scale.set(0.3, 0.3, 0.3);
-        return sprite;
-      };
-
-      const applyCameraShake = () => {
-        const shakeIntensity = 0.1;
-        const shakeDuration = 100; // in milliseconds
-
-        const originalPosition = camera.position.clone();
-        const shake = () => {
-          camera.position.x = originalPosition.x + (Math.random() - 0.5) * shakeIntensity;
-          camera.position.y = originalPosition.y + (Math.random() - 0.5) * shakeIntensity;
-          camera.position.z = originalPosition.z + (Math.random() - 0.5) * shakeIntensity;
-        };
-
-        const resetCameraPosition = () => {
-          camera.position.copy(originalPosition);
-        };
-
-        shake();
-        setTimeout(resetCameraPosition, shakeDuration);
-      };
-
       window.addEventListener('click', onMouseClick);
 
       const animate = () => {
         requestAnimationFrame(animate);
 
-        world.step(1 / 60);
+        // Step the world with a smaller time step for more stable physics
+        world.step(1 / 120);
+        
+        // Debug: Report number of dynamic vs static bodies
+        if (ragdollActive.current) {
+          let dynamicCount = 0;
+          let staticCount = 0;
+          
+          physicsObjectsRef.current.forEach(physicsObj => {
+            if (physicsObj.body.mass > 0) dynamicCount++;
+            else staticCount++;
+          });
+          
+          // Only log occasionally to avoid flooding console
+          if (Math.random() < 0.01) {
+            console.log(`Physics bodies: ${dynamicCount} dynamic, ${staticCount} static`);
+          }
+        }
         
         // Update physics wireframes to match physics bodies
         if (physicsObjectsRef.current.length > 0) {
@@ -623,41 +1164,34 @@ const Wasteland = ({ volume }) => {
             const wireframe = physicsWireframesRef.current[index];
             
             if (wireframe && body) {
-              // For trimesh shapes, we don't need to update the position
-              // since they're already correctly positioned
-              if (body.shapes[0] instanceof CANNON.Trimesh) {
-                // For trimesh wireframes, we only need to update if the body moved
-                // which shouldn't happen for static bodies, but just in case
-                if (body.position.x !== wireframe.position.x ||
-                    body.position.y !== wireframe.position.y ||
-                    body.position.z !== wireframe.position.z) {
-                  wireframe.position.copy(new THREE.Vector3(
-                    body.position.x,
-                    body.position.y,
-                    body.position.z
-                  ));
-                  
-                  wireframe.quaternion.copy(new THREE.Quaternion(
-                    body.quaternion.x,
-                    body.quaternion.y,
-                    body.quaternion.z,
-                    body.quaternion.w
-                  ));
-                }
-              } else {
-                // For box and sphere wireframes, always update
-                wireframe.position.copy(new THREE.Vector3(
-                  body.position.x,
-                  body.position.y,
-                  body.position.z
-                ));
-                
-                wireframe.quaternion.copy(new THREE.Quaternion(
-                  body.quaternion.x,
-                  body.quaternion.y,
-                  body.quaternion.z,
-                  body.quaternion.w
-                ));
+              // Always update wireframe position and rotation to match body
+              wireframe.position.copy(new THREE.Vector3(
+                body.position.x,
+                body.position.y,
+                body.position.z
+              ));
+              
+              wireframe.quaternion.copy(new THREE.Quaternion(
+                body.quaternion.x,
+                body.quaternion.y,
+                body.quaternion.z,
+                body.quaternion.w
+              ));
+              
+              // Update the corresponding mesh directly if it exists
+              if (mesh) {
+                mesh.position.copy(wireframe.position);
+                mesh.quaternion.copy(wireframe.quaternion);
+              }
+              
+              // Debug: Log if a body is still static after activation
+              if (ragdollActive.current && body.mass === 0) {
+                console.warn(`Body ${name} is still static after ragdoll activation!`);
+                // Force it to be dynamic
+                body.type = CANNON.Body.DYNAMIC;
+                body.mass = 1;
+                body.updateMassProperties();
+                body.wakeUp();
               }
             }
           });
