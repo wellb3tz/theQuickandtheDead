@@ -42,6 +42,9 @@ const Wasteland = ({ volume }) => {
   const history = useHistory();
   const particleSystemRef = useRef(null);
   const sceneRef = useRef(new THREE.Scene());
+  const isMountedRef = useRef(true); // Add ref to track if component is mounted
+  const animationIdRef = useRef(null); // Add ref to track animation frame ID
+  const activeAudioRef = useRef([]); // Add ref to track active audio objects
 
   // Create references for physics objects and their wireframes
   const physicsObjectsRef = useRef([]);
@@ -1340,6 +1343,17 @@ const Wasteland = ({ volume }) => {
             const hitAudio = new Audio(randomHitSound);
             hitAudio.volume = volume; // Set volume
             hitAudio.play();
+            
+            // Track audio object for cleanup
+            activeAudioRef.current.push(hitAudio);
+            
+            // Remove from tracking once it's done playing
+            hitAudio.onended = () => {
+              const index = activeAudioRef.current.indexOf(hitAudio);
+              if (index !== -1) {
+                activeAudioRef.current.splice(index, 1);
+              }
+            };
 
             // Only show skull icon and decrease counter if this bandit hasn't been hit before
             if (!hitBanditsRef.current.has(banditId)) {
@@ -1428,8 +1442,11 @@ const Wasteland = ({ volume }) => {
       window.addEventListener('click', onMouseClick);
 
       const animate = () => {
-        requestAnimationFrame(animate);
-
+        // Check if component is still mounted before continuing animation
+        if (!isMountedRef.current) return;
+        
+        animationIdRef.current = requestAnimationFrame(animate);
+        
         // Step the world with a smaller time step for more stable physics
         world.step(1 / 120);
         
@@ -1675,8 +1692,100 @@ const Wasteland = ({ volume }) => {
       animate();
 
       return () => {
+        console.log('Cleaning up Wasteland component resources');
+        // Set mounted flag to false to stop animation
+        isMountedRef.current = false;
+        
+        // Stop and clear all active audio
+        activeAudioRef.current.forEach(audio => {
+          audio.pause();
+          audio.src = '';
+        });
+        activeAudioRef.current = [];
+        
+        // Cancel animation frame
+        if (animationIdRef.current) {
+          cancelAnimationFrame(animationIdRef.current);
+          animationIdRef.current = null;
+        }
+        
+        // Remove event listener
         window.removeEventListener('click', onMouseClick);
-        mountRef.current.removeChild(renderer.domElement);
+        
+        // Remove renderer DOM element
+        if (mountRef.current && renderer.domElement) {
+          mountRef.current.removeChild(renderer.domElement);
+        }
+        
+        // Dispose of Three.js objects
+        scene.traverse(object => {
+          // Dispose geometries
+          if (object.geometry) {
+            object.geometry.dispose();
+          }
+          
+          // Dispose materials and their textures
+          if (object.material) {
+            if (Array.isArray(object.material)) {
+              object.material.forEach(material => {
+                if (material.map) material.map.dispose();
+                if (material.lightMap) material.lightMap.dispose();
+                if (material.bumpMap) material.bumpMap.dispose();
+                if (material.normalMap) material.normalMap.dispose();
+                if (material.specularMap) material.specularMap.dispose();
+                if (material.envMap) material.envMap.dispose();
+                material.dispose();
+              });
+            } else {
+              if (object.material.map) object.material.map.dispose();
+              if (object.material.lightMap) object.material.lightMap.dispose();
+              if (object.material.bumpMap) object.material.bumpMap.dispose();
+              if (object.material.normalMap) object.material.normalMap.dispose();
+              if (object.material.specularMap) object.material.specularMap.dispose();
+              if (object.material.envMap) object.material.envMap.dispose();
+              object.material.dispose();
+            }
+          }
+        });
+        
+        // Clear physics world
+        if (world) {
+          // Remove all bodies
+          while (world.bodies.length > 0) {
+            world.remove(world.bodies[0]);
+          }
+          
+          // Remove all constraints
+          while (world.constraints.length > 0) {
+            world.removeConstraint(world.constraints[0]);
+          }
+        }
+        
+        // Clear references to improve garbage collection
+        physicsObjectsRef.current = [];
+        physicsWireframesRef.current = [];
+        banditsRef.current = [];
+        skullIconsRef.current = [];
+        hitBanditsRef.current.clear();
+        ragdollActive.current = false;
+        
+        // Clear global references
+        if (window.jointConstraints) {
+          window.jointConstraints = null;
+        }
+        if (window.originalBoneLengths) {
+          window.originalBoneLengths = null;
+        }
+        
+        // Reset scene
+        while (scene.children.length > 0) {
+          scene.remove(scene.children[0]);
+        }
+        
+        // Dispose of renderer
+        renderer.dispose();
+        
+        console.log('Wasteland component cleanup complete');
       };
     },
     (progress) => {
@@ -2055,6 +2164,13 @@ const Wasteland = ({ volume }) => {
       
     }, 200); // Reduced to 200ms
   }, [volume]);
+  
+  // Set mounted flag to false when component unmounts
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleLeaveArea = () => {
     history.push('/looting');
