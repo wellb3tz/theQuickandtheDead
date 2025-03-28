@@ -55,6 +55,15 @@ const Wasteland = ({ volume }) => {
   const bonesRef = useRef({});
   const skeletonHelperRef = useRef(null);
 
+  // Add a new state variable for rigid mode
+  const [rigidModeEnabled, setRigidModeEnabled] = useState(false);
+  
+  // Add toggle function for rigid mode
+  const toggleRigidMode = () => {
+    setRigidModeEnabled(!rigidModeEnabled);
+    console.log(`Rigid mode ${!rigidModeEnabled ? 'enabled' : 'disabled'}`);
+  };
+  
   // Add toggle functions inside the component but outside of useEffect
   const toggleWireframes = () => {
     const newVisibility = !wireframesVisible;
@@ -294,6 +303,42 @@ const Wasteland = ({ volume }) => {
               initialQuaternion: bone.quaternion.clone(),
               initialMatrix: bone.matrix.clone()
             };
+            
+            // Fix any initial extreme bone rotations that might cause joint knots
+            const isJoint = bone.name.toLowerCase().includes('elbow') || 
+                          bone.name.toLowerCase().includes('knee') || 
+                          bone.name.toLowerCase().includes('joint');
+            
+            if (isJoint) {
+              // Get the rotation in euler angles
+              const rotation = new THREE.Euler().setFromQuaternion(bone.quaternion);
+              
+              // Check for extreme initial rotations
+              const INITIAL_LIMIT = Math.PI * 0.6; // 108 degrees
+              let modified = false;
+              
+              if (Math.abs(rotation.x) > INITIAL_LIMIT) {
+                rotation.x = Math.sign(rotation.x) * INITIAL_LIMIT;
+                modified = true;
+              }
+              
+              if (Math.abs(rotation.y) > INITIAL_LIMIT) {
+                rotation.y = Math.sign(rotation.y) * INITIAL_LIMIT;
+                modified = true;
+              }
+              
+              if (Math.abs(rotation.z) > INITIAL_LIMIT) {
+                rotation.z = Math.sign(rotation.z) * INITIAL_LIMIT;
+                modified = true;
+              }
+              
+              // Apply corrected rotation if needed
+              if (modified) {
+                console.log(`Fixing extreme initial rotation on joint: ${bone.name}`);
+                bone.quaternion.setFromEuler(rotation);
+                bone.updateMatrix();
+              }
+            }
           });
         }
         
@@ -1472,13 +1517,21 @@ const Wasteland = ({ volume }) => {
                       const localScale = new THREE.Vector3();
                       localMatrix.decompose(localPos, localQuat, localScale);
                       
-                      // Set bone local position and rotation
+                      // Always update position
                       bone.position.copy(localPos);
-                      bone.quaternion.copy(localQuat);
+                      
+                      // Only update rotation if rigid mode is disabled
+                      if (!rigidModeEnabled) {
+                        bone.quaternion.copy(localQuat);
+                      }
                     } else {
-                      // If no parent, set directly
+                      // If no parent, set position directly 
                       bone.position.copy(bodyPos);
-                      bone.quaternion.copy(bodyQuat);
+                      
+                      // Only update rotation if rigid mode is disabled
+                      if (!rigidModeEnabled) {
+                        bone.quaternion.copy(bodyQuat);
+                      }
                     }
                     
                     // Update bone matrix and mark the skeleton for update
@@ -1559,7 +1612,8 @@ const Wasteland = ({ volume }) => {
         if (ragdollActive.current) {
           // Preserve bone lengths before updating skeletons
           preserveBoneLengths();
-          maintainBoneHierarchyIntegrity(); // Add this new call
+          maintainBoneHierarchyIntegrity();
+          smoothJointRotations(); // Add this new function call to fix joint knots
           
           // Update all skinned meshes to reflect bone changes
           banditsRef.current.forEach(bandit => {
@@ -1691,12 +1745,39 @@ const Wasteland = ({ volume }) => {
         skinnedMeshes.forEach(mesh => {
           console.log(`Preparing skinned mesh: ${mesh.name}`);
           
-          // When using physics to drive bones, "attached" mode often works better
-          mesh.bindMode = 'attached';
+          // When using physics to drive bones, try "detached" mode instead
+          // "attached" mode can cause joint distortion in some models
+          mesh.bindMode = 'detached';
           
-          // Reset bind matrices
+          // Properly reset bind matrices
           mesh.bindMatrix.identity();
           mesh.bindMatrixInverse.identity();
+          
+          // Fix skinning weights to smooth out joints
+          if (mesh.geometry && mesh.geometry.attributes.skinWeight) {
+            // Normalize and adjust skin weights to give smoother deformation
+            const weights = mesh.geometry.attributes.skinWeight.array;
+            const indices = mesh.geometry.attributes.skinIndex.array;
+            
+            // Adjust weights to avoid extreme deformations at joints
+            for (let i = 0; i < weights.length; i += 4) {
+              // Find the sum of weights for this vertex
+              let sum = 0;
+              for (let j = 0; j < 4; j++) {
+                sum += weights[i + j];
+              }
+              
+              // Normalize weights to sum to 1
+              if (sum > 0) {
+                for (let j = 0; j < 4; j++) {
+                  weights[i + j] /= sum;
+                }
+              }
+            }
+            
+            // Mark attribute for update
+            mesh.geometry.attributes.skinWeight.needsUpdate = true;
+          }
           
           // Explicitly set visibility to match the state
           mesh.visible = skinnedMeshVisible;
@@ -1899,6 +1980,7 @@ const Wasteland = ({ volume }) => {
       // Preserve bone lengths 
       preserveBoneLengths();
       maintainBoneHierarchyIntegrity();
+      smoothJointRotations(); // Add this new function call to fix joint knots
       
       // Update all skinned meshes to reflect bone changes
       banditsRef.current.forEach(bandit => {
@@ -2018,9 +2100,9 @@ const Wasteland = ({ volume }) => {
       bandit.traverse(node => {
         if (node.type === 'SkinnedMesh') {
           // Force skinned mesh to use bone matrices directly
-          node.bindMode = 'attached';
-          node.bindMatrix = new THREE.Matrix4();
-          node.bindMatrixInverse = new THREE.Matrix4();
+          node.bindMode = 'detached';
+          node.bindMatrix.identity();
+          node.bindMatrixInverse.identity();
           
           // Ensure mesh follows its bones
           node.skeleton.calculateInverses();
@@ -2096,6 +2178,61 @@ const Wasteland = ({ volume }) => {
     });
   };
 
+  // Add this new function after preserveBoneLengths
+  const smoothJointRotations = () => {
+    banditsRef.current.forEach(bandit => {
+      bandit.traverse(node => {
+        if (node.type === 'SkinnedMesh' && node.skeleton) {
+          const bones = node.skeleton.bones;
+          
+          // Create bone name to bone object mapping
+          const bonesByName = {};
+          bones.forEach(bone => {
+            bonesByName[bone.name] = bone;
+            
+            // Look for joints likely to be elbows or knees
+            const isJoint = bone.name.toLowerCase().includes('elbow') || 
+                            bone.name.toLowerCase().includes('knee') || 
+                            bone.name.toLowerCase().includes('joint');
+            
+            if (isJoint) {
+              // Get the rotation in euler angles
+              const rotation = new THREE.Euler().setFromQuaternion(bone.quaternion);
+              
+              // Limit extreme rotations to prevent unnatural bending
+              const ROTATION_LIMIT = Math.PI * 0.75; // 135 degrees
+              let modified = false;
+              
+              if (Math.abs(rotation.x) > ROTATION_LIMIT) {
+                rotation.x = Math.sign(rotation.x) * ROTATION_LIMIT;
+                modified = true;
+              }
+              
+              if (Math.abs(rotation.y) > ROTATION_LIMIT) {
+                rotation.y = Math.sign(rotation.y) * ROTATION_LIMIT;
+                modified = true;
+              }
+              
+              if (Math.abs(rotation.z) > ROTATION_LIMIT) {
+                rotation.z = Math.sign(rotation.z) * ROTATION_LIMIT;
+                modified = true;
+              }
+              
+              // Apply the smoothed rotation if changes were made
+              if (modified) {
+                bone.quaternion.setFromEuler(rotation);
+                bone.updateMatrix();
+              }
+            }
+          });
+        }
+      });
+    });
+  };
+
+  // Make sure we call this function in the animate loop where we update the bones
+  // Find where preserveBoneLengths() is called in the animate function and add this line after it:
+
   return (
     <div ref={mountRef} className="wasteland-container">
       {isLoading && (
@@ -2139,6 +2276,12 @@ const Wasteland = ({ volume }) => {
             className="toggle-button skinned-toggle"
           >
             {skinnedMeshVisible ? 'Hide' : 'Show'} Skin Mesh
+          </button>
+          <button 
+            onClick={toggleRigidMode} 
+            className="toggle-button rigid-toggle"
+          >
+            {rigidModeEnabled ? 'Disable' : 'Enable'} Rigid Mode
           </button>
           <div className="stiffness-control">
             <label htmlFor="joint-stiffness">Joint Stiffness:</label>
